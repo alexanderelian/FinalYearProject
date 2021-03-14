@@ -12,12 +12,17 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   if (store$iter > params$lookback) {
     startIndex <-  store$iter - params$lookback
     #Loop through every series in the data
-    #for (i in 1:length(params$series)) { #All Series
-    for (i in 1:1) {  #One Series
+    for (i in 1:length(params$series)) { #All Series
+    #for (i in 1:1) {  #One Series
       
       #pos[params$series[i]] <- MomentumStrategy(store, startIndex, i, pos)
-      MomentumPos <- MomentumStrategy(store, startIndex, i, pos)
-      pos[params$series[i]] <- MomentumPos
+      
+      #MomentumPos <- MomentumStrategy(store, startIndex, i, pos)
+      #pos[params$series[i]] <- MomentumPos
+      
+      MeanRevPos <- MeanRevStrategy(store, startIndex, i, pos)
+      pos[params$series[i]] <- MeanRevPos
+      
       #if (tester != 0 && tester != -1) {
       #  print(tester)
       #}
@@ -58,7 +63,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
             
             #print("Entered Trade Opportunity!")
             pos[params$series[i]] <- params$posSizes[params$series[i]]
-            print(pos[params$series[i]])
+            #print(pos[params$series[i]])
             
           }
         }
@@ -78,6 +83,85 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       pos[params$series[i]] <- -params$posSizes[params$series[i]]
       #print("Exit (SMI) Trade Opportunity!")
     }
+    return(pos[params$series[i]])
+  }
+  
+  
+  
+  MeanRevStrategy <- function(store, startIndex, i, pos){ #params inside of the function.
+    cl = store$cl[startIndex:store$iter]
+    bbands <- last(BBands(store$cl[startIndex:store$iter,i],
+                          n=params$lookback,sd=params$sdParam))
+    #print(bbands)
+    
+    ###Averages
+    smaShort <- last(SMA(store$cl[startIndex:store$iter,i],n=params$lookbackShort))
+    #print(smaShort)
+    sma <- last(SMA(store$cl[startIndex:store$iter,i],n=params$lookback))
+    #print(sma)
+    ema <- last(EMA(store$cl[startIndex:store$iter,i],n=params$lookback, wilder = FALSE, ratio = NULL))
+    #print(ema)
+    vwap <- last(VWAP(store$cl[startIndex:store$iter,i], store$vol[startIndex:store$iter,i], 1))
+    #print(vwap)
+    
+    macd <- last(MACD(store$cl[startIndex:store$iter,i],nFast = params$nfast, nSlow = params$nSlow, nSig = params$nSig, percent = FALSE),2)
+    #print(macd[,1])
+    
+    ### Extra Indicators
+    rsi <- last(RSI(store$cl[startIndex:store$iter,i],n=params$rsi))
+  
+    #ENTER THE MARKET
+    if (cl[i] < bbands[,"dn"]) {
+      # if close is relatively low go long (i.e., Mean Reversion)
+      pos[params$series[i]] <- params$posSizes[params$series[i]] 
+    }
+    
+    if (macd[2,1] < 0){ #BELOW ZERO LINE (MAKES BULLISH MORE SIGNIFICANT)
+      if ((macd[1,1] < macd[1,2]) && (macd[2,1] > macd[2,2])){ ##CROSS ABOVE SIGNAL LINE (BULLISH)
+        pos[params$series[i]] <- params$posSizes[params$series[i]]
+      }
+    }
+    
+    if (sma < ema)  {
+      pos[params$series[i]] <- params$posSizes[params$series[i]]
+    }
+    
+    if (rsi <= 30){
+      pos[params$series[i]] <- params$posSizes[params$series[i]]
+    }
+    
+    if (vwap < bbands[,"dn"]) {
+      pos[params$series[i]] <- params$posSizes[params$series[i]]
+    }
+    
+    
+    
+    
+    #EXIT THE MARKET
+    if (cl[i] > bbands[,"up"]) {
+      # if close is relatively high go short (again, Mean Reversion)
+      pos[params$series[i]] <- -params$posSizes[params$series[i]]
+    }
+  
+     
+    if ((macd[1,1] > macd[1,2]) && (macd[2,1] < macd[2,2])){ ##CROSS BELOW
+       pos[params$series[i]] <- -params$posSizes[params$series[i]]
+    }
+
+    #if (rsi >= 65){
+    #  pos[params$series[i]] <- -params$posSizes[params$series[i]]
+    #}
+    
+    
+    #MORE SPECIFIC (COMBINE INDICATORS)
+    #if (cl[i] < bbands[,"dn"]) {
+    #  if (macd[2,1] < 0)  {
+    #    if ((macd[1,1] < macd[1,2]) && (macd[2,1] > macd[2,2])){ ##CROSS ABOVE SIGNAL LINE (BULLISH)
+    #      pos[params$series[i]] <- params$posSizes[params$series[i]]
+    #    }
+    #  }
+    #}
+    
     return(pos[params$series[i]])
   }
 
