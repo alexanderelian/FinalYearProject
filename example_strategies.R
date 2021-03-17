@@ -9,7 +9,9 @@ example_strategies <- c("fixed",
                         "bbands_holding_period",
                         "simple_limit",
                         "extreme_limit",
-                        "tester"
+                        "tester",
+                        "MyStrategy",
+                        "strat"
                         )
 
 example_params <- list(
@@ -24,8 +26,11 @@ example_params <- list(
                     "bbands_holding_period"=list(lookback=50,sdParam=1.5,series=c(1,3),posSizes=rep(1,10),holdPeriod=6),
                     "simple_limit"=list(spreadPercentage=0.001,inventoryLimits=rep(10,10)),
                     "extreme_limit"=list(spreadPercentage=0.001,inventoryLimits=rep(10,10)),
-                    "tester"=list(lookback=40,lookbackShort=20,nfast=12,nSlow=26,nSig = 9,sdParam=1.5,rsi=14,adx=14,series=c(1,3,5,7,8,9),posSizes=rep(1,10))
-                     )
+                    "tester"=list(lookback=40,lookbackShort=20,nfast=12,nSlow=26,nSig = 9,sdParam=1.5,rsi=14,adx=14,series=c(1,3,5,7,8,9),posSizes=rep(1,10)),
+                    "MyStrategy"=list(lookback=40,lookbackShort=20,nfast=12,nSlow=26,nSig = 9,sdParam=1.5,rsi=14,adx=14,series=c(1,3,5,7,8,9),posSizes=rep(1,10)),
+                    "strat"=list(lookback=50,sdParam=2,adx=14,nfast=12,nSlow=26,nSig = 9,series=c(1,2,3,4,5,6,7,8,9,10),posSizes=rep(50,10))
+                    
+                    )
 
 load_strategy <- function(strategy) {
 
