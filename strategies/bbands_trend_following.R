@@ -13,7 +13,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     if (is.null(store)) store <- initStore(newRowList,params$series)
     store <- updateStore(store, newRowList, params$series)
 	
-    marketOrders <- -currentPos; pos <- allzero
+    pos <- allzero
 
     if (store$iter > params$lookback) {
        startIndex <-  store$iter - params$lookback
@@ -23,15 +23,15 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
                                       n=params$lookback,sd=params$sdParam))
            if (cl < bbands[,"dn"]) {
                # if close is relatively low go short (i.e., trend following)
-               pos[params$series[i]] <- params$posSizes[params$series[i]]
+               pos[params$series[i]] <- -params$posSizes[params$series[i]] - currentPos[[i]]
            }
            else if (cl > bbands[,"up"]) {
                # if close is relatively high go long (again, trend following)
-               pos[params$series[i]] <- -params$posSizes[params$series[i]]
+               pos[params$series[i]] <- params$posSizes[params$series[i]] - currentPos[[i]]
            }
        }
     }
-    marketOrders <- marketOrders + pos
+    marketOrders <- pos
 
     return(list(store=store,marketOrders=marketOrders,
 	                    limitOrders1=allzero,limitPrices1=allzero,
