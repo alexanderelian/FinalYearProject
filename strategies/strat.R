@@ -1,7 +1,7 @@
 # "strat"=list(lookback=50,sdParam=2,adx=14,nfast=12,nSlow=26,nSig = 9,series=c(1,2,3,4,5,6,7,8,9,10),posSizes=rep(50,10))
-
 maxRows <- 3100 # used to initialize a matrix to store closing prices
 # set maxRows as the number of rows in data (it can be larger but should not be smaller)
+
 
 getOrders <- function(store, newRowList, currentPos, info, params) {
   
@@ -18,16 +18,20 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     for (i in 1:length(params$series)) {
 
       x <- MomentumStrategy(store, newRowList, currentPos, info, params, i, startIndex)
+      position <- x$position
+      store <- x$store
+      #print(counter)
       #x <- MeanRevStrategy(store, newRowList, currentPos, info, params, i, startIndex) #(2)
       #list <- MarketMakingStrategy(store, newRowList, currentPos, info, params, i, startIndex)
       #print(x)
-      if (x != 0){
-        pos[params$series[i]] <- x
+      if (position != 0){
+        pos[params$series[i]] <- position
       }
     }
   }
   #For market Orders
   marketOrders <- pos
+  store <- store
 
   #For Limit Orders (Market Making)
   #limitOrders1 <- pos
@@ -80,70 +84,88 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
        if (adx[,4] > 25) {  #VALUES (0-25:Weak : 25-50:Strong : 50-75:V.Strong : 75-100:Ext.Strong)                                    ##DETECT Sufficient STRENGTH to the breakout        //if very strong maybe give more funds, increase position?
          if (emv[,1] < -0.3) {  #VALUES (Break Above 0 is price rise with ease (below is price fall): Further from 0 equals stronger)             ##Avoid Fakeout, Is able to move more and in a positive
            position <- -params$posSizes[params$series[i]] - currentPos[[i]] #Go short (trend following)
+           #print(index(cl))
            
            
-  #Plot Generation Code
+           
+           
+           # # Holding Period Calculation Code        
+           # BoughtAt <- as.double(cl)
            # date <- index(cl)  #Trades Date
-           # dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
+           # dateLimits <- paste(as.Date(date),"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
            # dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
-           # 
-           # #PARAMS (for title)
-           # adxParam = 25
-           # emvParam = 0.3
-           # PlotTitle <- paste("Series",i,"-short-",index(cl),"-adx=",adxParam,"-emv=",emvParam,sep = "")
-           # 
-           # #Generate and Plot Graph
-           # pdf(file = (paste("Plots/Momentum/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
-           #     width = 10, # The width of the plot in inches
-           #     height = 10) # The height of the plot in inches
            # d1 <- dataList[[i]]
-           # graphTitle <- paste("Short Opportunity Traded - Series", i,"-DATE:",index(cl))
-           # print(c("plotted",graphTitle))
+           # returnVa2 <- (d1$Close[dateLimits]/BoughtAt) * 100   #%return at this point
            # 
-           # #Plotting Function
-           # chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=2),addMACD()),subset = dateLimits, name = graphTitle, plot = TRUE)
-           # addTA(SMA(d1$Close,n=50),on=NA)
-           # abline(v = 7,col = 'blue')   #X-Axis line, date of enter
-           # 
-           # 
-           # 
-           # #HLCdf2 <- data.frame(d1$High, d1$Low,d1$Close)
-           # #addTA(ADX(HLCdf2,n=14),on=1)
-           # 
-           # dev.off()
+           # tmp <<- cbind(tmp,matrix(returnVa2))
+           # #print(tmp)
            
-  #Holding Period Code
-           # # check if we have been in trade too long
-           # # we maintain that pos[i] is an integer
-           # # if pos[i] == 0 we were flat last period
-           # # if pos[i] >  0 we have been long  for store$count[i] periods
-           # # if pos[i] <  0 we have been short for store$count[i] periods
-           # 
-           # if (position[params$series[i]] == 1) {# long signal today 
-           #   if (store$count[i] < 0) # last time we were short
-           #     store$count[i] == position[params$series[i]] # == 1
-           #   else if (store$count[i] == params$holdPeriod) { # reached holding period
-           #     position[params$series[i]] <- 0 # don't stay long
-           #     store$count[i] <- 0 # reset count to 0
-           #   }
-           #   else # 0 <= store$count[i] != (should be <) params$holdPeriod
-           #     store$count[i] <- store$count[i] + 1 
-           # }
-           # 
-           # else if (position[params$series[i]] == -1) {# short signal today
-           #   
-           #   if (store$count[i] > 0) # last time we were long
-           #     store$count[i] == position[params$series[i]] # == -1
-           #   else if (store$count[i] == -params$holdPeriod) { # reached holding period
-           #     position[params$series[i]] <- 0 # don't stay short
-           #     store$count[i] <- 0 # reset count to 0
-           #   }
-           #   else # 0 >= store$count[i] != (should be >) -params$holdPeriod
-           #     store$count[i] <- store$count[i] - 1 
-           # }
-           # else
-           #   store$count[i] <- 0 # reset count to 0
-         }
+           
+           
+           
+          #  BoughtAt <- as.double(cl)
+          #  #print(BoughtAt)
+          #  
+          #  date <- index(cl)  #Trades Date
+          #  dateLimits <- paste(as.Date(date),"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
+          #  dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
+          # 
+          #  #PARAMS (for title)
+          #  adxParam = 25
+          #  emvParam = 0.3
+          #  PlotTitle <- paste("Series",i,"-short-",index(cl),"-adx=",adxParam,"-emv=",emvParam,sep = "")
+          # 
+          #  #Generate and Plot Graph
+          #  #pdf(file = (paste("Plots/Momentum/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
+          # #     width = 10, # The width of the plot in inches
+          # #     height = 10) # The height of the plot in inches
+          #  d1 <- dataList[[i]]
+          #  graphTitle <- paste("Short Opportunity Traded - Series", i,"-DATE:",index(cl))
+          #  print(c("plotted",graphTitle))
+          # 
+          #  #Plotting Function
+          #  chartSeries((d1$Close/BoughtAt),theme='white',subset = dateLimits, name = graphTitle, plot = TRUE)
+          #  #addTA(SMA(d1$Close,n=50),on=NA)
+          #  abline(v = 7,col = 'blue')   #X-Axis line, date of enter
+          #  abline(v = 14,col = 'blue')   #X-Axis line, date of enter
+
+
+
+           #HLCdf2 <- data.frame(d1$High, d1$Low,d1$Close)
+           #addTA(ADX(HLCdf2,n=14),on=1)
+
+           #dev.off()
+           
+  # #Plot Generation Code
+  #          date <- index(cl)  #Trades Date
+  #          dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
+  #          dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
+  # 
+  #          #PARAMS (for title)
+  #          adxParam = 25
+  #          emvParam = 0.3
+  #          PlotTitle <- paste("Series",i,"-short-",index(cl),"-adx=",adxParam,"-emv=",emvParam,sep = "")
+  # 
+  #          #Generate and Plot Graph
+  #          pdf(file = (paste("Plots/Momentum/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
+  #              width = 10, # The width of the plot in inches
+  #              height = 10) # The height of the plot in inches
+  #          d1 <- dataList[[i]]
+  #          graphTitle <- paste("Short Opportunity Traded - Series", i,"-DATE:",index(cl))
+  #          print(c("plotted",graphTitle))
+  # 
+  #          #Plotting Function
+  #          chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=2),addMACD()),subset = dateLimits, name = graphTitle, plot = TRUE)
+  #          addTA(SMA(d1$Close,n=50),on=NA)
+  #          abline(v = 8,col = 'blue')   #X-Axis line, date of enter
+  # 
+  # 
+  # 
+  #          #HLCdf2 <- data.frame(d1$High, d1$Low,d1$Close)
+  #          #addTA(ADX(HLCdf2,n=14),on=1)
+  # 
+  #          dev.off()
+          }
        }
      }
   }
@@ -153,9 +175,28 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
          if (emv[,1] > 0.3) {  #VALUES (Break Above 0 is price rise with ease (below is price fall): Further from 0 equals stronger)             ##Avoid Fakeout, Is able to move more and in a positive
            position <- params$posSizes[params$series[i]] - currentPos[[i]]  #Go long (trend following)
            
-  #Plot Generation Code
+           #print(index(cl))
+           
+           
+           # # Holding Period Calculation Code        
+           # BoughtAt <- as.double(cl)
            # date <- index(cl)  #Trades Date
-           # dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
+           # dateLimits <- paste(as.Date(date),"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
+           # dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
+           # d1 <- dataList[[i]]
+           # returnVa2 <- (d1$Close[dateLimits]/BoughtAt) * 100   #%return at this point
+           # 
+           # tmp <<- cbind(tmp,matrix(returnVa2))
+           # #print(tmp)
+           
+           
+           
+#Plot Returns          
+           #BoughtAt <- as.double(cl)
+           # #print(BoughtAt)
+           # 
+           # date <- index(cl)  #Trades Date
+           # dateLimits <- paste(as.Date(date),"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
            # dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
            # 
            # #PARAMS (for title)
@@ -164,34 +205,63 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
            # PlotTitle <- paste("Series",i,"-long-",index(cl),"-adx=",adxParam,"-emv=",emvParam,sep = "")
            # 
            # #Generate and Plot Graph
-           # pdf(file = (paste("Plots/Momentum/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
-           #      width = 10, # The width of the plot in inches
-           #      height = 10) # The height of the plot in inches
+           # pdf(file = (paste("Plots/Momentum/Returns/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
+           #     width = 10, # The width of the plot in inches
+           #     height = 10) # The height of the plot in inches
            # d1 <- dataList[[i]]
-           # graphTitle <- paste("Long Opportunity Traded - Series", i,"-DATE:",index(cl))
+           # graphTitle <- paste("Long Opportunity Returns - Series", i,"-DATE:",index(cl))
            # print(c("plotted",graphTitle))
            # 
            # #Plotting Function
-           # chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=2),addMACD()),subset = dateLimits, name = graphTitle, plot = TRUE)
-           # addTA(SMA(d1$Close,n=50),on=NA)
+           # closePrice <- d1$Close[dateLimits]
+           # returnVa <- (closePrice/BoughtAt)    #%return at this point
+           # chartSeries(returnVa,theme='white',subset = dateLimits, name = graphTitle, plot = TRUE)#returnVa
+           # 
+           # #chartSeries((d1$Close/BoughtAt),theme='white',subset = dateLimits, name = graphTitle, plot = TRUE)#returnVa
+           # #addTA(SMA(d1$Close,n=50),on=NA)
            # abline(v = 7,col = 'blue')   #X-Axis line, date of enter
-           # 
-           # 
-           # 
-           # #HLCdf2 <- data.frame(d1$High, d1$Low,d1$Close)
-           # #addTA(ADX(HLCdf2,n=14),on=1)
+           # abline(v = 14,col = 'blue')   #X-Axis line, date of enter
            # 
            # dev.off()
-           #
-           
+
+  # #Plot Generation Code
+  #          date <- index(cl)  #Trades Date
+  #          dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
+  #          dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
+  # 
+  #          #PARAMS (for title)
+  #          adxParam = 25
+  #          emvParam = 0.3
+  #          PlotTitle <- paste("Series",i,"-long-",index(cl),"-adx=",adxParam,"-emv=",emvParam,sep = "")
+  # 
+  #          #Generate and Plot Graph
+  #          pdf(file = (paste("Plots/Momentum/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
+  #               width = 10, # The width of the plot in inches
+  #               height = 10) # The height of the plot in inches
+  #          d1 <- dataList[[i]]
+  #          graphTitle <- paste("Long Opportunity Traded - Series", i,"-DATE:",index(cl))
+  #          print(c("plotted",graphTitle))
+  # 
+  #          #Plotting Function
+  #          chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=2),addMACD()),subset = dateLimits, name = graphTitle, plot = TRUE)
+  #          addTA(SMA(d1$Close,n=50),on=NA)
+  #          abline(v = 8,col = 'blue')   #X-Axis line, date of enter
+  # 
+  # 
+  # 
+  #          #HLCdf2 <- data.frame(d1$High, d1$Low,d1$Close)
+  #          #addTA(ADX(HLCdf2,n=14),on=1)
+  # 
+  #          dev.off()
+
   #Holding Period Code
            # check if we have been in trade too long
            # we maintain that pos[i] is an integer
            # if pos[i] == 0 we were flat last period
            # if pos[i] >  0 we have been long  for store$count[i] periods
            # if pos[i] <  0 we have been short for store$count[i] periods
-           
-           # if (position[params$series[i]] == 1) {# long signal today 
+
+           # if (position[params$series[i]] == 1) {# long signal today
            #   if (store$count[i] < 0) # last time we were short
            #     store$count[i] == position[params$series[i]] # == 1
            #   else if (store$count[i] == params$holdPeriod) { # reached holding period
@@ -199,11 +269,11 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
            #     store$count[i] <- 0 # reset count to 0
            #   }
            #   else # 0 <= store$count[i] != (should be <) params$holdPeriod
-           #     store$count[i] <- store$count[i] + 1 
+           #     store$count[i] <- store$count[i] + 1
            # }
            # 
            # else if (position[params$series[i]] == -1) {# short signal today
-           #   
+           # 
            #   if (store$count[i] > 0) # last time we were long
            #     store$count[i] == position[params$series[i]] # == -1
            #   else if (store$count[i] == -params$holdPeriod) { # reached holding period
@@ -211,7 +281,7 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
            #     store$count[i] <- 0 # reset count to 0
            #   }
            #   else # 0 >= store$count[i] != (should be >) -params$holdPeriod
-           #     store$count[i] <- store$count[i] - 1 
+           #     store$count[i] <- store$count[i] - 1
            # }
            # else
            #   store$count[i] <- 0 # reset count to 0
@@ -219,7 +289,54 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
        }
      }
   }
-  return(position)
+  #print(position)
+  #print(store$count)
+  
+  
+  #Holding Period Code
+  # check if we have been in trade too long
+  # we maintain that pos[i] is an integer
+  # if pos[i] == 0 we were flat last period
+  # if pos[i] >  0 we have been long  for store$count[i] periods
+  # if pos[i] <  0 we have been short for store$count[i] periods
+  
+  if (position == 100) {# long signal today
+    #print("1")
+    #print(store$count[i])
+    if (store$count[i] < 0) {# last time we were short
+      store$count[i] == 1 # == 1 (was position)
+    } else if (store$count[i] == params$holdPeriod) { # reached holding period
+      position <- 0 # don't stay long
+      store$count[i] <- 0 # reset count to 0
+      print("ENDED")
+    }
+    else {# 0 <= store$count[i] != (should be <) params$holdPeriod
+      store$count[i] <- store$count[i] + 1
+    }
+  }
+  
+  else if (position == -100) {# short signal today  #position size
+    #print("2")
+    #print(store$count[i])
+    if (store$count[i] > 0) {# last time we were long
+      store$count[i] == -1 # == -1 (was position)
+    } else if (store$count[i] == -params$holdPeriod) { # reached holding period
+      position <- 0 # don't stay short
+      store$count[i] <- 0 # reset count to 0
+      print("ENDED")
+    }
+    else {# 0 >= store$count[i] != (should be >) -params$holdPeriod
+      store$count[i] <- store$count[i] - 1
+    }
+  }
+  else {
+    store$count[i] <- 0 # reset count to 0
+  }
+  #if ((store$count[i]) == -1) {print(store$count[i])}
+  #print(store$count[i])
+  #print(store$count[i])
+  
+  return(list(position=position, store=store))
 }
 
 
@@ -572,9 +689,10 @@ MarketMakingStrategy <- function(store, newRowList, currentPos, info, params, i,
   
   #Store Functions
   initStore <- function(newRowList,series) {
+    count <- vector(mode="numeric",length=length(series)) # stores # of days in trade
     return(list(iter=0,cl=initClStore(newRowList,series),vol=initVolStore(newRowList,series)
                 ,hi=initHiStore(newRowList,series),low=initLowStore(newRowList,series)
-                ,op=initLowStore(newRowList,series)))
+                ,op=initLowStore(newRowList,series),count = count))
   }
   updateStore <- function(store, newRowList, series) {
     store$iter <- store$iter + 1
