@@ -14,15 +14,23 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   
   if (store$iter > params$lookback) {
     startIndex <-  store$iter - params$lookback
-    #for (i in 1:1) {  #One Series
+    #for (i in 10:10) {  #One Series
     for (i in 1:length(params$series)) {
-
+      #MO - Momentum Strategy
       x <- MomentumStrategy(store, newRowList, currentPos, info, params, i, startIndex)
       position <- x$position
       store <- x$store
-      #print(counter)
+      
+      
+      #MR - Mean Reversion Strategy
       #x <- MeanRevStrategy(store, newRowList, currentPos, info, params, i, startIndex) #(2)
-      #list <- MarketMakingStrategy(store, newRowList, currentPos, info, params, i, startIndex)
+      
+      #MM - Market Making Strategy
+      # MM <- MarketMakingStrategy(store, newRowList, currentPos, info, params, i, startIndex)
+      # MMLO1 <- MM$limitOrders1
+      # MMLP1 <- MM$limitPrices1
+      # MMLO2 <- MM$limitOrders2
+      # MMLP2 <- MM$limitPrices2
       #print(x)
       if (position != 0){
         pos[params$series[i]] <- position
@@ -32,13 +40,17 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   #For market Orders
   marketOrders <- pos
   store <- store
-
-  #For Limit Orders (Market Making)
-  #limitOrders1 <- pos
   limitOrders1 <- allzero
   limitPrices1 <- allzero
   limitOrders2 <- allzero
   limitPrices2 <- allzero
+
+  #For Limit Orders (Market Making)
+  #limitOrders1 <- pos
+  # limitOrders1 <- MMLO1
+  # limitPrices1 <- MMLP1
+  # limitOrders2 <- MMLO2
+  # limitPrices2 <- MMLP2
   
   #print(marketOrders)
   return(list(store=store,marketOrders=marketOrders,
@@ -52,13 +64,9 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
 
 
 MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, startIndex){ #params inside of the function.
-  #Things to condsider:
-    #Double Breakout?
-    #New Local Highs and Lows?
-  
   #Using Market Orders
   position <- 0
-  
+
   #Set Up
   cl <- newRowList[[params$series[i]]]$Close
   HLCdf <- data.frame(High = store$hi[startIndex:store$iter,i],
@@ -70,8 +78,17 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   #Calculate Indicators
   adx <- last(ADX(HLCdf,n=params$adx))
   emv <- last(EMV(HLdf,store$vol[startIndex:store$iter,i]))
+  # bbands <- last(BBands(store$cl[startIndex:store$iter,i],
+  #                       n=params$lookback,sd=params$sdParam[i]))
   bbands <- last(BBands(store$cl[startIndex:store$iter,i],
-                        n=params$lookback,sd=params$sdParam))
+                        n=params$lookback,sd=params$MOsdParam[i]))       #For main_optimisation only
+  
+  # Error in if (cl < bbands[, "dn"]) { : 
+  # missing value where TRUE/FALSE needed
+  # Called from: MomentumStrategy(store, newRowList, currentPos, info, params, 
+  #                               i, startIndex)
+  
+  #^caused by sd params haveing an [i] - need it for full run, as it changed in the list... for optimise on one series only one is passed through
   
   macdlookback  = 7
   macd <- last(MACD(store$cl[startIndex:store$iter,i],nFast = params$nfast, nSlow = params$nSlow, nSig = params$nSig, percent = FALSE),macdlookback)
@@ -79,25 +96,34 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   histogramValue.old <- (macd[macdlookback-2,1] - macd[macdlookback-2,2])   
   histogramValue.new <- (macd[macdlookback,1] - macd[macdlookback,2])   #MOMENTUM IS INCREASING #Most recent   (IF NEW > OLD = Acceleration in momentum) + if crossing above signal line (- if crossing below)
   
+  
+  #Look for a short
+  #print(bbands)
+  #print(store$iter)
+  if(store$iter >= 977) {}else{     #if you there are less than 21 days of data left, dont enter any trades...
+  
+  #print(c("param recieced is",params))
+    
+    
   if (cl < bbands[,"dn"]) {
-     if (histogramValue.new < histogramValue.old && histogramValue.new < 0){ #Negative Divergence
-       if (adx[,4] > 25) {  #VALUES (0-25:Weak : 25-50:Strong : 50-75:V.Strong : 75-100:Ext.Strong)                                    ##DETECT Sufficient STRENGTH to the breakout        //if very strong maybe give more funds, increase position?
-         if (emv[,1] < -0.3) {  #VALUES (Break Above 0 is price rise with ease (below is price fall): Further from 0 equals stronger)             ##Avoid Fakeout, Is able to move more and in a positive
+     if (histogramValue.new < histogramValue.old && histogramValue.new < 0){ #Downward Momentum & Increasing
+       if (adx[,4] > params$MOadxSignal[i]) {  #VALUES (0-25:Weak : 25-50:Strong : 50-75:V.Strong : 75-100:Ext.Strong)                                    ##DETECT Sufficient STRENGTH to the breakout        //if very strong maybe give more funds, increase position?
+         if (emv[,1] < params$emvShort) {  #VALUES (Break Above 0 is price rise with ease (below is price fall): Further from 0 equals stronger)             ##Avoid Fakeout, Is able to move more and in a positive
            position <- -params$posSizes[params$series[i]] - currentPos[[i]] #Go short (trend following)
            #print(index(cl))
            
            
            
-           
-           # # Holding Period Calculation Code        
+           # Holding Period Calculation Code
            # BoughtAt <- as.double(cl)
            # date <- index(cl)  #Trades Date
            # dateLimits <- paste(as.Date(date),"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
            # dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
            # d1 <- dataList[[i]]
-           # returnVa2 <- (d1$Close[dateLimits]/BoughtAt) * 100   #%return at this point
            # 
-           # tmp <<- cbind(tmp,matrix(returnVa2))
+           # return <- ((BoughtAt-d1$Close[dateLimits])/BoughtAt)*100
+           # 
+           # tmp <<- cbind(tmp,matrix(return))
            # #print(tmp)
            
            
@@ -169,24 +195,26 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
        }
      }
   }
+  #Look for a long
   else if (cl > bbands[,"up"]) {
-     if (histogramValue.new > histogramValue.old && histogramValue.new > 0){ #Positive Divergence
-       if (adx[,4] > 25) {  #VALUES (0-25:Weak : 25-50:Strong : 50-75:V.Strong : 75-100:Ext.Strong)                                    ##DETECT Sufficient STRENGTH to the breakout
-         if (emv[,1] > 0.3) {  #VALUES (Break Above 0 is price rise with ease (below is price fall): Further from 0 equals stronger)             ##Avoid Fakeout, Is able to move more and in a positive
+     if (histogramValue.new > histogramValue.old && histogramValue.new > 0){ #Upwards Momentum & Growing
+       if (adx[,4] > params$MOadxSignal[i]) {  #VALUES (0-25:Weak : 25-50:Strong : 50-75:V.Strong : 75-100:Ext.Strong)  #needs to be [i] for full run: as there is multiple series to runthrough same for bbands sd
+         if (emv[,1] > params$emvLong) {  #VALUES (Break Above 0 is price rise with ease (below is price fall): Further from 0 equals stronger)             ##Avoid Fakeout, Is able to move more and in a positive
            position <- params$posSizes[params$series[i]] - currentPos[[i]]  #Go long (trend following)
            
-           #print(index(cl))
            
-           
-           # # Holding Period Calculation Code        
+           # # # # Holding Period Calculation Code        
            # BoughtAt <- as.double(cl)
            # date <- index(cl)  #Trades Date
            # dateLimits <- paste(as.Date(date),"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
            # dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
            # d1 <- dataList[[i]]
-           # returnVa2 <- (d1$Close[dateLimits]/BoughtAt) * 100   #%return at this point
            # 
-           # tmp <<- cbind(tmp,matrix(returnVa2))
+           # return <- ((d1$Close[dateLimits]-BoughtAt)/BoughtAt)*100
+           # 
+           # #returnVa2 <- (d1$Close[dateLimits]/BoughtAt) * 100   #%return at this point
+           # 
+           # tmp <<- cbind(tmp,matrix(return))
            # #print(tmp)
            
            
@@ -291,7 +319,7 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   }
   #print(position)
   #print(store$count)
-  
+  }
   
   #Holding Period Code
   # check if we have been in trade too long
@@ -300,41 +328,46 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   # if pos[i] >  0 we have been long  for store$count[i] periods
   # if pos[i] <  0 we have been short for store$count[i] periods
   
-  if (position == 100) {# long signal today
+  
+  
+  if (currentPos[i] >= 1 || position >= 1) {# long signal today
     #print("1")
     #print(store$count[i])
     if (store$count[i] < 0) {# last time we were short
-      store$count[i] == 1 # == 1 (was position)
-    } else if (store$count[i] == params$holdPeriod) { # reached holding period
-      position <- 0 # don't stay long
+      store$count[i] = 1 # == 1 (was position)
+    } else if (store$count[i] == params$holdPeriod[i]) { # reached holding period
+      position <- -currentPos[i] # don't stay long
       store$count[i] <- 0 # reset count to 0
-      print("ENDED")
+      #print("FORCED ENDED LONG TRADE")
     }
     else {# 0 <= store$count[i] != (should be <) params$holdPeriod
       store$count[i] <- store$count[i] + 1
+      #print(store$count[i])
     }
   }
   
-  else if (position == -100) {# short signal today  #position size
+  else if (currentPos[i] >= -1 || position >= -1) {# short signal today  #position size
     #print("2")
     #print(store$count[i])
     if (store$count[i] > 0) {# last time we were long
-      store$count[i] == -1 # == -1 (was position)
-    } else if (store$count[i] == -params$holdPeriod) { # reached holding period
-      position <- 0 # don't stay short
+      store$count[i] = -1 # == -1 (was position)
+    } else if (store$count[i] == -params$shortHoldPeriod[i]) { # reached holding period
+      position <- -currentPos[i] # don't stay short
       store$count[i] <- 0 # reset count to 0
-      print("ENDED")
+      #print("FORCED ENDED SHORT TRADE")
     }
     else {# 0 >= store$count[i] != (should be >) -params$holdPeriod
       store$count[i] <- store$count[i] - 1
+      #print(store$count[i])
     }
   }
   else {
     store$count[i] <- 0 # reset count to 0
   }
-  #if ((store$count[i]) == -1) {print(store$count[i])}
+  #if ((store$count[i]) > 1) {print(store$count[i])}
+  #print(store$count)
   #print(store$count[i])
-  #print(store$count[i])
+  
   
   return(list(position=position, store=store))
 }
