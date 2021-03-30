@@ -1,4 +1,4 @@
-# "strat"=list(lookback=50,sdParam=2,adx=14,nfast=12,nSlow=26,nSig = 9,series=c(1,2,3,4,5,6,7,8,9,10),posSizes=rep(50,10))
+#"strat"=list(lookback=50,lookbackShort=34,MOsdParam=c(1.5,1.5,2,1.5,99,1.5,1.5,1.5,1.5,1.5),MOShortSdParams=c(1.5,99,2,2,99.5,1.5,99,99,99,1.5),sdParamShort=1,adx=14,MOadxSignal=c(25,25,20,25,0,35,25,35,35,25),MOShortadxSignal=c(25,0,25,30,0,30,0,0,0,30),emvLong=0.3,emvShort=-0.3,nfast=12,nSlow=26,nSig = 9,rsi=14,holdPeriod=c(19,18,18,21,0,21,16,21,8,5),shortHoldPeriod=c(21,0,16,14,0,18,0,0,0,21),series=c(1,2,3,4,5,6,7,8,9,10),posSizes=c(24,20,142,6,13,96,89,1,42,306),spreadPercentage=0.001,inventoryLimits=rep(10,10))
 maxRows <- 3100 # used to initialize a matrix to store closing prices
 # set maxRows as the number of rows in data (it can be larger but should not be smaller)
 
@@ -11,10 +11,14 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   store <- updateStore(store, newRowList, params$series)
   
   pos <- allzero
+  MMLO1 <- allzero
+  MMLP1 <- allzero
+  MMLO2 <- allzero
+  MMLP2 <- allzero
   
   if (store$iter > params$lookback) {
     startIndex <-  store$iter - params$lookback
-    #for (i in 10:10) {  #One Series
+    #for (i in 4:4) {  #One Series
     for (i in 1:length(params$series)) {
       #MO - Momentum Strategy
       x <- MomentumStrategy(store, newRowList, currentPos, info, params, i, startIndex)
@@ -24,14 +28,17 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       
       #MR - Mean Reversion Strategy
       #x <- MeanRevStrategy(store, newRowList, currentPos, info, params, i, startIndex) #(2)
+      #position <- x
       
       #MM - Market Making Strategy
       # MM <- MarketMakingStrategy(store, newRowList, currentPos, info, params, i, startIndex)
-      # MMLO1 <- MM$limitOrders1
-      # MMLP1 <- MM$limitPrices1
-      # MMLO2 <- MM$limitOrders2
-      # MMLP2 <- MM$limitPrices2
-      #print(x)
+      # position <- 0
+      # MMLO1[params$series[i]] <- MM$limitOrders1[i]
+      # MMLP1[params$series[i]] <- MM$limitPrices1[i]
+      # MMLO2[params$series[i]] <- MM$limitOrders2[i]
+      # MMLP2[params$series[i]] <- MM$limitPrices2[i]
+      
+      
       if (position != 0){
         pos[params$series[i]] <- position
       }
@@ -80,8 +87,10 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   emv <- last(EMV(HLdf,store$vol[startIndex:store$iter,i]))
   # bbands <- last(BBands(store$cl[startIndex:store$iter,i],
   #                       n=params$lookback,sd=params$sdParam[i]))
-  bbands <- last(BBands(store$cl[startIndex:store$iter,i],
-                        n=params$lookback,sd=params$MOsdParam[i]))       #For main_optimisation only
+  Longbbands <- last(BBands(store$cl[startIndex:store$iter,i],
+                        n=params$lookback,sd=params$MOsdParam[i]))       #For main_optimisation only [i] and in adx for long and short trades
+  Shortbbands <- last(BBands(store$cl[startIndex:store$iter,i],
+                            n=params$lookback,sd=params$MOShortSdParams[i]))       #For main_optimisation only [i] and in adx for long and short trades
   
   # Error in if (cl < bbands[, "dn"]) { : 
   # missing value where TRUE/FALSE needed
@@ -96,35 +105,36 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   histogramValue.old <- (macd[macdlookback-2,1] - macd[macdlookback-2,2])   
   histogramValue.new <- (macd[macdlookback,1] - macd[macdlookback,2])   #MOMENTUM IS INCREASING #Most recent   (IF NEW > OLD = Acceleration in momentum) + if crossing above signal line (- if crossing below)
   
-  
   #Look for a short
   #print(bbands)
   #print(store$iter)
-  if(store$iter >= 977) {}else{     #if you there are less than 21 days of data left, dont enter any trades...
+  
+  if(store$iter >= 968) {}else{     #if you there are less than 31 days of data left, dont enter any trades...
   
   #print(c("param recieced is",params))
     
-    
-  if (cl < bbands[,"dn"]) {
+  #Could also use adx (+/-DMI to confirm up/downtrends)
+  if (cl < Shortbbands[,"dn"]) {
      if (histogramValue.new < histogramValue.old && histogramValue.new < 0){ #Downward Momentum & Increasing
-       if (adx[,4] > params$MOadxSignal[i]) {  #VALUES (0-25:Weak : 25-50:Strong : 50-75:V.Strong : 75-100:Ext.Strong)                                    ##DETECT Sufficient STRENGTH to the breakout        //if very strong maybe give more funds, increase position?
+       if (adx[,4] > params$MOShortadxSignal[i]) {  #VALUES (0-25:Weak : 25-50:Strong : 50-75:V.Strong : 75-100:Ext.Strong)                                    ##DETECT Sufficient STRENGTH to the breakout        //if very strong maybe give more funds, increase position?
          if (emv[,1] < params$emvShort) {  #VALUES (Break Above 0 is price rise with ease (below is price fall): Further from 0 equals stronger)             ##Avoid Fakeout, Is able to move more and in a positive
            position <- -params$posSizes[params$series[i]] - currentPos[[i]] #Go short (trend following)
+           
            #print(index(cl))
+           #print(bbands[,"dn"])
+           #print(cl)
            
            
            
-           # Holding Period Calculation Code
+           # # Holding Period Calculation Code
            # BoughtAt <- as.double(cl)
-           # date <- index(cl)  #Trades Date
+           # date <- index(cl)  #Todays Date
            # dateLimits <- paste(as.Date(date),"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
            # dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
+           # 
            # d1 <- dataList[[i]]
-           # 
            # return <- ((BoughtAt-d1$Close[dateLimits])/BoughtAt)*100
-           # 
-           # tmp <<- cbind(tmp,matrix(return))
-           # #print(tmp)
+           # tmp <<- cbind(tmp,matrix(return))  #Calculate and Store ROI
            
            
            
@@ -163,46 +173,45 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
            #dev.off()
            
   # #Plot Generation Code
-  #          date <- index(cl)  #Trades Date
-  #          dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
-  #          dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
-  # 
-  #          #PARAMS (for title)
-  #          adxParam = 25
-  #          emvParam = 0.3
-  #          PlotTitle <- paste("Series",i,"-short-",index(cl),"-adx=",adxParam,"-emv=",emvParam,sep = "")
-  # 
-  #          #Generate and Plot Graph
-  #          pdf(file = (paste("Plots/Momentum/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
-  #              width = 10, # The width of the plot in inches
-  #              height = 10) # The height of the plot in inches
-  #          d1 <- dataList[[i]]
-  #          graphTitle <- paste("Short Opportunity Traded - Series", i,"-DATE:",index(cl))
-  #          print(c("plotted",graphTitle))
-  # 
-  #          #Plotting Function
-  #          chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=2),addMACD()),subset = dateLimits, name = graphTitle, plot = TRUE)
-  #          addTA(SMA(d1$Close,n=50),on=NA)
-  #          abline(v = 8,col = 'blue')   #X-Axis line, date of enter
-  # 
-  # 
-  # 
-  #          #HLCdf2 <- data.frame(d1$High, d1$Low,d1$Close)
-  #          #addTA(ADX(HLCdf2,n=14),on=1)
-  # 
-  #          dev.off()
+          #  date <- index(cl)  #Trades Date
+          #  dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
+          #  dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
+          # 
+          #  #PARAMS (for title)
+          #  adxParam = 25
+          #  emvParam = 0.3
+          #  PlotTitle <- paste("Series",i,"-short-",index(cl),"-adx=",adxParam,"-emv=",emvParam,sep = "")
+          # 
+          #  #Generate and Plot Graph
+          # # pdf(file = (paste("Plots/Momentum/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
+          # #     width = 10, # The width of the plot in inches
+          # #     height = 10) # The height of the plot in inches
+          #  d1 <- dataList[[i]]
+          #  graphTitle <- paste("Short Opportunity Traded - Series", i,"-DATE:",index(cl))
+          #  print(c("plotted",graphTitle))
+          # 
+          #  #Plotting Function
+          #  chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=params$MOsdParam),addMACD()),subset = dateLimits, name = graphTitle, plot = TRUE)
+          #  addTA(SMA(d1$Close,n=50),on=NA)
+          #  abline(v = 8,col = 'blue')   #X-Axis line, date of enter
+
+
+
+           #HLCdf2 <- data.frame(d1$High, d1$Low,d1$Close)
+           #addTA(ADX(HLCdf2,n=14),on=1)
+
+          # dev.off()
           }
        }
      }
   }
   #Look for a long
-  else if (cl > bbands[,"up"]) {
+  else if (cl > Longbbands[,"up"]) {
      if (histogramValue.new > histogramValue.old && histogramValue.new > 0){ #Upwards Momentum & Growing
        if (adx[,4] > params$MOadxSignal[i]) {  #VALUES (0-25:Weak : 25-50:Strong : 50-75:V.Strong : 75-100:Ext.Strong)  #needs to be [i] for full run: as there is multiple series to runthrough same for bbands sd
          if (emv[,1] > params$emvLong) {  #VALUES (Break Above 0 is price rise with ease (below is price fall): Further from 0 equals stronger)             ##Avoid Fakeout, Is able to move more and in a positive
            position <- params$posSizes[params$series[i]] - currentPos[[i]]  #Go long (trend following)
-           
-           
+           #print(index(cl))
            # # # # Holding Period Calculation Code        
            # BoughtAt <- as.double(cl)
            # date <- index(cl)  #Trades Date
@@ -330,33 +339,73 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   
   
   
-  if (currentPos[i] >= 1 || position >= 1) {# long signal today
-    #print("1")
-    #print(store$count[i])
-    if (store$count[i] < 0) {# last time we were short
-      store$count[i] = 1 # == 1 (was position)
-    } else if (store$count[i] == params$holdPeriod[i]) { # reached holding period
-      position <- -currentPos[i] # don't stay long
-      store$count[i] <- 0 # reset count to 0
+  # if (currentPos[i] >= 1 || position >= 1) {# long signal today
+  #   #print("shouldnt see this")
+  #   #print(store$count[i])
+  #   if (store$count[i] < 0) {# last time we were short
+  #     store$count[i] = 1 # == 1 (was position)
+  #   } else if (store$count[i] == params$holdPeriod[i]) { # reached holding period
+  #     position <- -currentPos[i] # don't stay long
+  #     store$count[i] <- 0 # reset count to 0
+  #     #print("FORCED ENDED LONG TRADE")
+  #   }
+  #   else {# 0 <= store$count[i] != (should be <) params$holdPeriod
+  #     store$count[i] <- store$count[i] + 1
+  #     #print(store$count[i])
+  #   }
+  # }
+  # 
+  # else if (currentPos[i] >= -1 || position >= -1) {# short signal today  #position size
+  #   #print("")
+  #   #print(store$count[i])
+  #   if (store$count[i] > 0) {# last time we were long
+  #     store$count[i] = -1 # == -1 (was position)
+  #   } else if (store$count[i] == -params$shortHoldPeriod[i]) { # reached holding period
+  #     position <- -currentPos[i] # don't stay short
+  #     store$count[i] <- 0 # reset count to 0
+  #     #print("FORCED ENDED SHORT TRADE")
+  #   }
+  #   else {# 0 >= store$count[i] != (should be >) -params$holdPeriod
+  #     store$count[i] <- store$count[i] - 1
+  #     #print(store$count[i])
+  #   }
+  # }
+  # else {
+  #   store$count[i] <- 0 # reset count to 0
+  # }
+  
+  #if (position < 0 || currentPos[i] < 0){
+  #  print(position)
+  #  print(currentPos[i])
+  #}
+  #print(position)
+  #print(currentPos[i])
+  #print(store$count[i])
+  #print(i)
+  
+  if (currentPos[i] >= 1 || position >= 1) {  #Check if i have taken a long position
+    #print("You should not see this, if you have a long trade has occured")
+    if (store$count[i] < 0) { #If last time i was short...
+      store$count[i] = 1 # Begin the count
+    } else if (store$count[i] == params$holdPeriod[i]) { # If holding period is reached
+      position <- -currentPos[i] # Don't stay long
+      store$count[i] <- 0 # Reset count to 0
       #print("FORCED ENDED LONG TRADE")
-    }
-    else {# 0 <= store$count[i] != (should be <) params$holdPeriod
-      store$count[i] <- store$count[i] + 1
+    } else {
+      store$count[i] <- store$count[i] + 1  #Add another day to count (One more day we stayed long)
       #print(store$count[i])
     }
   }
-  
-  else if (currentPos[i] >= -1 || position >= -1) {# short signal today  #position size
-    #print("2")
-    #print(store$count[i])
-    if (store$count[i] > 0) {# last time we were long
-      store$count[i] = -1 # == -1 (was position)
-    } else if (store$count[i] == -params$shortHoldPeriod[i]) { # reached holding period
-      position <- -currentPos[i] # don't stay short
-      store$count[i] <- 0 # reset count to 0
-      #print("FORCED ENDED SHORT TRADE")
-    }
-    else {# 0 >= store$count[i] != (should be >) -params$holdPeriod
+
+  else if (currentPos[i] <= -1 || position <= -1) { #Check if i have taken a short position
+    #print("Entered Short Trade")
+    if (store$count[i] > 0) {   #If last time i was long...
+      store$count[i] = -1 #Begin the count
+    } else if (store$count[i] == -params$shortHoldPeriod[i]) { # If holding period is reached
+      #print(c("Left Short Trade after day ", store$count[i]))
+      position <- -currentPos[i] # Don't stay short
+      store$count[i] <- 0 # Reset count to 0
+    } else {# 0 >= store$count[i] != (should be >) -params$holdPeriod
       store$count[i] <- store$count[i] - 1
       #print(store$count[i])
     }
@@ -364,6 +413,7 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   else {
     store$count[i] <- 0 # reset count to 0
   }
+
   #if ((store$count[i]) > 1) {print(store$count[i])}
   #print(store$count)
   #print(store$count[i])
@@ -413,6 +463,17 @@ MeanRevStrategy <- function(store, newRowList, currentPos, info, params, i, star
       if (adx[,4] < 25) { #Do not want strong upwards momentum #This is just weak momentum regardless
         position <- params$posSizes[params$series[i]] - currentPos[[i]] #Go Long (Mean Reversion)
         
+        #print(index(cl))
+        
+        date <- index(cl)
+        dateLimit <- paste(as.Date(date) - 7,"/", as.Date(date)+ 7)  #Set Date Limits, Pre-Week/Post-3Week
+        dateLimit <- gsub(" ", "", dateLimit, fixed = TRUE)
+        d1 <- dataList[[i]]
+        one <- chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=2),addRSI(n=2)),subset = dateLimit, name = paste("Mean Rev +/-7Days - DATE:",entryPoints[i]) )
+        one.AxisX.Maximum = 5;
+        addTA(SMA(d1$Close,n=50),on=NA)
+        abline(v = 8,col = 'blue')   #X-Axis line, date of enter
+        
   #Plot Generation Code
         # date <- index(cl)  #Trades Date
         # dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
@@ -447,9 +508,14 @@ MeanRevStrategy <- function(store, newRowList, currentPos, info, params, i, star
     if (cl < ema.n) { #
       if (adx[,4] < 25) {
         position <- -params$posSizes[params$series[i]] - currentPos[[i]] 
+        #print(index(cl))
       }
     }
   }
+  
+  
+  
+  
   
   
   # #RSI(2) Mean Reversion Strategy P/D = 1
@@ -610,7 +676,13 @@ MarketMakingStrategy <- function(store, newRowList, currentPos, info, params, i,
   # with a market order
   marketOrders <- ifelse(abs(currentPos) > params$inventoryLimits, -currentPos, 0)      #Security Measure
   
-  
+  # macd <- last(MACD(store$cl[startIndex:store$iter,i],nFast = params$nfast, nSlow = params$nSlow, nSig = params$nSig, percent = FALSE),2)
+  # if ((macd[1,1] < macd[1,2]) && (macd[2,1] > macd[2,2])){ ##CROSS ABOVE SIGNAL LINE (BULLISH)
+  #   #we expect to see a price rise (opposite for bullish and price fall)
+  # }
+  # obv <- last(OBV(store$cl[startIndex:store$iter,i],store$vol[startIndex:store$iter,i]))
+  # cl <- newRowList[[params$series[i]]]$Close
+  # ema <- last(EMA(store$cl[startIndex:store$iter,i],n=params$lookback, wilder = FALSE, ratio = NULL))
   
   
   
@@ -620,32 +692,9 @@ MarketMakingStrategy <- function(store, newRowList, currentPos, info, params, i,
     params$spreadPercentage * (newRowList[[i]]$High -
                                  newRowList[[i]]$Low))
   
+  #print(spread)
 
-  macd <- last(MACD(store$cl[startIndex:store$iter,i],nFast = params$nfast, nSlow = params$nSlow, nSig = params$nSig, percent = FALSE),2)
-  
-  if ((macd[1,1] < macd[1,2]) && (macd[2,1] > macd[2,2])){ ##CROSS ABOVE SIGNAL LINE (BULLISH)
-    #we expect to see a price rise (opposite for bullish and price fall)
-  }
-  
-  rsi <- last(RSI(store$cl[startIndex:store$iter,i],n=params$rsi))
-  print(rsi)
-  
-  if(rsi < 30){   #Stock oversold is undervalued -  so we expect the price to go up
-    
-  }
-  
-  
-  
-  if (rsi > 70){  #Stock overbought is overvalued -  so we expect the price to go down
-    
-  }
-  
-  obv <- last(OBV(store$cl[startIndex:store$iter,i],store$vol[startIndex:store$iter,i]))
-  #print(obv)
-  
-  cl <- newRowList[[params$series[i]]]$Close
-  ema <- last(EMA(store$cl[startIndex:store$iter,i],n=params$lookback, wilder = FALSE, ratio = NULL))
-  #if(cl < ema) ()
+
   
   
   limitOrders1  <- rep(1,length(newRowList)) # BUY LIMIT ORDERS
