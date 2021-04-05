@@ -18,10 +18,15 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   
   if (store$iter > params$lookback) {
     startIndex <-  store$iter - params$lookback
-    #for (i in 1:1) {  #One Series
+    #for (i in 4:4) {  #One Series
     for (i in 1:length(params$series)) {
       #MO - Momentum Strategy
       # x <- MomentumStrategy(store, newRowList, currentPos, info, params, i, startIndex)
+      # position <- x$position
+      # store <- x$store
+      
+      #MO - Momentum Strategy
+      # x <- MomentumStrategyType2(store, newRowList, currentPos, info, params, i, startIndex)
       # position <- x$position
       # store <- x$store
       
@@ -85,7 +90,7 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
                      Low = store$low[startIndex:store$iter,i])
   
   
-  posSize <- 30000 / cl
+  posSize <- 60000 / cl
   
   #Calculate Indicators
   adx <- last(ADX(HLCdf,n=params$adx))
@@ -425,51 +430,152 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   return(list(position=position, store=store))
 }
 
+MomentumStrategyType2 <- function(store, newRowList, currentPos, info, params, i, startIndex){ #params inside of the function.
+  #Using Market Orders
+  position <- 0
+  
+  #Set Up
+  cl <- newRowList[[params$series[i]]]$Close
+  hi <- newRowList[[params$series[i]]]$High
+  lo <- newRowList[[params$series[i]]]$Low
+  HLCdf <- data.frame(High = store$hi[startIndex:store$iter,i],
+                      Low = store$low[startIndex:store$iter,i],
+                      Close = store$cl[startIndex:store$iter])
+  
+  posSize <- 60000 / cl
+  
+  atr <- last(ATR(HLCdf))
+  #print(atr)
+  #print(cl)
+  
+  #Check for a cross...
+  crossingLookback <- 5
+  crossedAboveToday <- FALSE
+  crossedBelowToday <- FALSE
+  crossedAbove <- FALSE
+  crossedBelow <- FALSE
+  # sma.3 <- last(SMA(store$cl[startIndex:store$iter,i],n=3),crossingLookback)
+  # sma.10 <- last(SMA(store$cl[startIndex:store$iter,i],n=10),crossingLookback)
+  
+  ma.3 <- last(EMA(store$cl[startIndex:store$iter,i],n=params$maShort),crossingLookback)
+  ma.Long <- last(EMA(store$cl[startIndex:store$iter,i],n=params$maLong),crossingLookback)
+  
+  #CROSS ABOVE OR BELOW TODAY
+  if((ma.3[crossingLookback-1] < ma.Long[crossingLookback-1]) && ((ma.3[crossingLookback] > ma.Long[crossingLookback])))  {
+    crossedAboveToday <-  TRUE
+  } else if ((ma.3[crossingLookback-1] > ma.Long[crossingLookback-1]) && ((ma.3[crossingLookback] < ma.Long[crossingLookback]))){
+    crossedBelowToday <-  TRUE
+  }
+  
+  
+  #CROSSED ABOVE OR BELOW IN THE PAST 3 DAYS
+  for (crossCounter in 2:4){
+
+    if((ma.3[crossCounter] < ma.Long[crossCounter]) && ((ma.3[crossCounter+1] > ma.Long[crossCounter+1])))  {
+      crossedAbove <-  TRUE
+    } else if ((ma.3[crossCounter] > ma.Long[crossCounter]) && ((ma.3[crossCounter+1] < ma.Long[crossCounter+1]))){
+      crossedBelow <-  TRUE
+    }
+
+  }
+  
+  
+  
+  #Check cross is a new local high
+  
+  #print(cl)
+  last10ClosePrice <- last(store$cl[startIndex:store$iter,i],11)  #LAST 10 DAYS (CLOSE PRICES)
+  last10ClosePrice <- head(last10ClosePrice)-1
+  localHigh <- max(last10ClosePrice)
+  localLow <- min(last10ClosePrice)
+  #print(last10ClosePrice)
+  
+  
+  # peak20Cl <- max(last10ClosePrice[1:5])
+  # peak15Cl <- max(last10ClosePrice[6:10])
+  # peak10Cl <- max(last10ClosePrice[11:15])
+  # peak05Cl <- max(last10ClosePrice[16:20])
+  # 
+  # peak11To20Cl <- max(peak20Cl,peak15Cl)
+  # peak01To10Cl <- max(peak10Cl,peak05Cl)
+  # 
+  # 
+  # if((peak11To20Cl > peak01To10Cl) )  {
+  #   #print("LoweringPeaks")
+  #   priceLowering <- TRUE
+  # }
+  # if((peak11To20Cl < peak01To10Cl))  {
+  #   #print("GrowingPeaks")
+  #   priceGrowing <- TRUE
+  # }
+  
+  
+  
+  
+  
+  if (crossedAboveToday) {
+    store$longEntryStop[i] <- hi
+  } else if (crossedBelowToday)  {
+    store$shortEntryStop[i] <- lo
+  }
+  
+  
+  if((crossedAbove) && (cl > store$longEntryStop[i])) {
+    position <- posSize - currentPos[[i]]  #Go long (trend following)
+    store$stopLoss[i] <- cl*0.99
+    #crossAbove <<- crossAbove + 1
+  } else if((crossedBelow) && (cl < store$shortEntryStop[i])) {
+    position <- -posSize - currentPos[[i]]  #Go short (trend following)
+    store$stopLoss[i] <- cl*1.01
+    #crossAbove <<- crossAbove + 1
+  }
+  
+  # if((crossedAbove) && (cl > localHigh)){
+  #   position <- posSize - currentPos[[i]]  #Go long (trend following)
+  #   crossAbove <<- crossAbove + 1
+  # }
+  # if((crossedBelow) && (cl < localLow)){
+  #   position <- -posSize - currentPos[[i]]  #Go short (trend following)
+  #   #crossAbove <<- crossAbove + 1
+  # }
+  
+  #3.26 w/out exit logic  ### 7.9 with
+  
+  #EXIT LOGIC
+  if (currentPos[i] >= 1 || position >= 1) {  #Check if i have taken a long position
+    if ((ma.3[crossingLookback] < ma.Long[crossingLookback]) || (cl < store$stopLoss[i])){
+      position <- -currentPos[i] # Don't stay Long
+      crossAbove <<- crossAbove + 1
+    }
+    store$stopLoss[i] <- cl*0.99
+  }
+
+  else if (currentPos[i] <= -1 || position <= -1) { #Check if i have taken a short position
+    if ((ma.3[crossingLookback] < ma.Long[crossingLookback]) || (cl < store$stopLoss[i])){
+      position <- -currentPos[i] # Don't stay short
+      crossAbove <<- crossAbove + 1
+    }
+    store$stopLoss[i] <- cl*1.01
+  }
+  
+  return(list(position=position, store=store))
+}
+
 
 MeanRevStrategy <- function(store, newRowList, currentPos, info, params, i, startIndex){ #params inside of the function.
   position <- 0
+  
   cl <- newRowList[[params$series[i]]]$Close
-  bbands <- last(BBands(store$cl[startIndex:store$iter,i],
-                        n=params$lookback,sd=params$sdParamShort))
-  #macdlookback  = 7
-  macd <- last(MACD(store$cl[startIndex:store$iter,i],nFast = params$nfast, nSlow = params$nSlow, nSig = params$nSig, percent = FALSE),2)
-  #rsi <- last(RSI(store$cl[startIndex:store$iter,i],n=params$rsi))
-  rsi.2 <- last(RSI(store$cl[startIndex:store$iter,i],n=2))
-  #print(c(rsi,rsi.2))
-  ema <- last(EMA(store$cl[startIndex:store$iter,i],n=params$lookback, wilder = FALSE, ratio = NULL))
-  
-  HLCdf <- data.frame(High = store$hi[startIndex:store$iter,i],
-                      Low = store$low[startIndex:store$iter,i],
-                      Close = store$cl[startIndex:store$iter,i])
-  adx <- last(ADX(HLCdf,n=params$adx))
-  
-  
-  ema.20 <- last(EMA(store$cl[startIndex:store$iter,i],n=params$lookback, wilder = FALSE, ratio = NULL))
-  #ema.50 <- last(EMA(store$cl[startIndex:store$iter,i],n=params$lookbackShort, wilder = FALSE, ratio = NULL))
-  #print(c(ema.20,ema.50))
-  sma.20 <- last(SMA(store$cl[startIndex:store$iter,i],n=params$lookback))
-  #sma.50 <- last(SMA(store$cl[startIndex:store$iter,i],n=params$lookbackShort))
-  
-  obv <- last(OBV(store$cl[startIndex:store$iter,i],store$vol[startIndex:store$iter,i]))
-  #print(obv)
-  
-  #perChange <- ((sma.50-sma.20) / sma.50)
-  #perChange <- (((sma.50-cl) / cl) * 100)
-  #print(perChange)
-  #print(is.matrix(HLCdf))
-  
+
+  posSize <- 60000 / cl
+
   HLCdf <- data.frame(High = store$hi[startIndex:store$iter,i],
                       Low = store$low[startIndex:store$iter,i],
                       Close = store$cl[startIndex:store$iter,i])
   
-  #ohlcMatrix <- as.xts(OHLCdf)
-  #print(is.xts(ohlcMatrix)
-  
-  
-  # #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA
-  
-  #KELTNER CHANNELS FUNCTION
-    
+  #############################################################################################       FUNCTIONS
+
+  #############################################################################################       KELTNER CHANNELS
   keltnerChannels <-
     function (HLC, n = 20, maType, atr = 2, ...)
     {
@@ -503,56 +609,24 @@ MeanRevStrategy <- function(store, newRowList, currentPos, info, params, i, star
       reclass(res, HLC)
     }
 
-  #RSI CALCUALTION FUNCTION 
-  
+  #############################################################################################       RSI
   rsiCalc <-	function(clStore,column,iter) {
     startIndex <- iter - params$lookback - 1 # needs 2 extra periods
     rsi <- last(RSI(clStore[startIndex:iter,column],n=params$rsi))
     return(rsi)
   }
   
-
-  #CROSSES FUNCTION
-  #HOW MANY TIMES HAS SMA 3/10 CROSSED IN THE PAST 10 DAYS
-  crossingLookback <- 30
-  crossed <- 0
-  # sma.3 <- last(SMA(store$cl[startIndex:store$iter,i],n=3),crossingLookback)
-  # sma.10 <- last(SMA(store$cl[startIndex:store$iter,i],n=10),crossingLookback)
-  sma.3 <- last(EMA(store$cl[startIndex:store$iter,i],n=3),crossingLookback)
-  sma.10 <- last(EMA(store$cl[startIndex:store$iter,i],n=10),crossingLookback)
-
-  for (crossCount in 2:crossingLookback){
-    if((sma.3[crossCount-1] < sma.10[crossCount-1]) && ((sma.3[crossCount] > sma.10[crossCount])))  {
-      crossed <-  crossed + 1
-    } else if ((sma.3[crossCount-1] > sma.10[crossCount-1]) && ((sma.3[crossCount] < sma.10[crossCount])))  {
-      crossed <-  crossed + 1
-    }
-  }
-
-  #print(crossed)
-  
-  #RSI DIVERGENCE
-  
-  last10ClosePrice <- last(store$cl[startIndex:store$iter,i],21)  #LAST 10 DAYS (CLOSE PRICES)
-  #last10ClosePrice <- head(last10ClosePrice,-1) #REMOVE TODAY
-  #print(last10ClosePrice)
-  localHigh <- max(last10ClosePrice)
-  localLow <- min(last10ClosePrice)
-  
   rsi <- rsiCalc(store$cl,i,store$iter)
+  
+  #############################################################################################       UPDATE RSI STORE
   for (rsiCounter in 20:1){
     store$rsiStore[rsiCounter+1,i] <- store$rsiStore[rsiCounter,i]
   }
   store$rsiStore[1,i] <- rsi
+  last10RSI <- rev(store$rsiStore[,i])  #From the store get the last x RSI values
   
-  #My METHOD USUING THE STORE
-  last10RSI <- rev(store$rsiStore[,i])  #SELECT FOR THIS SERIES ONLY!!!
-  
-  #print("---------------")
-  #print(rsi)
-  #print(last10RSI)
-  #print(last10ClosePrice)
-  
+  #############################################################################################       RSI DIVERGENCE
+
   rsiLowering <- FALSE
   rsiGrowing <- FALSE
   priceLowering <- FALSE
@@ -588,6 +662,8 @@ MeanRevStrategy <- function(store, newRowList, currentPos, info, params, i, star
     # }
   }
   
+  #############################################################################################       PRICE DIVERGENCE
+  last10ClosePrice <- last(store$cl[startIndex:store$iter,i],21)  #LAST 10 DAYS (CLOSE PRICES)
   
   peak20Cl <- max(last10ClosePrice[1:5])
   peak15Cl <- max(last10ClosePrice[6:10])
@@ -615,291 +691,829 @@ MeanRevStrategy <- function(store, newRowList, currentPos, info, params, i, star
   #   #print("GrowingPeaks")
   #   priceGrowing <- TRUE
   # }
-  
 
-  
-  
-  
-  #####THESE DIVERGENCES ARE RAREEEEEE MAYBE LOWER FROM 20 to 15?
-  
-  #print(last10RSI)
-  
-  #can test for divergence here....
-  
-  #last10rsi <- tail(rsi, n =10)
-  
 
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  
-  #print("-------------------------------------------------")
-  rsi <- rsiCalc(store$cl,i,store$iter)
-  last10Rsi <- tail(rsi, n = 5)#
-  #print(last10Rsi)
-  
-  
-  
-  
-  
-  #print("-------------------------------------------------")
-  # rsiTMP <- RSI(store$cl[startIndex:store$iter,i])
-  # #if(i == 8)  {
-  # #  print("IN 8")
-  # #}
-  # last5TMP <- tail(rsiTMP, n = 5)
-  # #print(last5TMP)
-  
-  
-  
-  
-  
-  #print(last10RSI)
-  #print(!any(is.na(last10RSI)))
-  #print(last10ClosePrice)
-  
-  #print(abs(closePrice - last10RSI))  #If larger = Divergence
-  
-  
-  
-  #print(rev(store$rsiStore[,i])) ##This is the last 10 days (most recent day is far right) 
-  #print(cl)
-  #print(closePrice)     #Past 9 days then today...
-  #print(last10RSI)     #Past 9 days then today...
-  
-  
-  #print(store$stopLoss)
-  #print(store$rsiStore)
- 
-  #print(cl)
-  #print("BReak")
-  #print(cl*1.02)
-  
-  keltner <- last(keltnerChannels(HLCdf, atr=1))
-  #Crossed is calculated above
-  
-  #NEED TO SORT OUT DIVERGENCE
-  
-  bbands <- last(BBands(store$cl[startIndex:store$iter,i],
-                             n=params$lookback,sd=1))       #For main_optimisation only [i] and in adx for long and short trades
-  
+  #############################################################################################       CALCULATE CROSSES
+  #HOW MANY TIMES HAS SMA 3/10 CROSSED IN THE PAST x DAYS
+  crossingLookback <- 30
+  crossed <- 0
+  # sma.3 <- last(SMA(store$cl[startIndex:store$iter,i],n=3),crossingLookback)
+  # sma.10 <- last(SMA(store$cl[startIndex:store$iter,i],n=10),crossingLookback)
+  ma.3 <- last(EMA(store$cl[startIndex:store$iter,i],n=3),crossingLookback)
+  ma.10 <- last(EMA(store$cl[startIndex:store$iter,i],n=10),crossingLookback)
+
+  for (crossCount in 2:crossingLookback){
+    if((ma.3[crossCount-1] < ma.10[crossCount-1]) && ((ma.3[crossCount] > ma.10[crossCount])))  {
+      crossed <-  crossed + 1
+    } else if ((ma.3[crossCount-1] > ma.10[crossCount-1]) && ((ma.3[crossCount] < ma.10[crossCount])))  {
+      crossed <-  crossed + 1
+    }
+  }
+
   #print(crossed)
 
+  keltner <- last(keltnerChannels(HLCdf, atr=1))
+
+  bbands <- last(BBands(store$cl[startIndex:store$iter,i],
+                             n=params$lookback,sd=params$mrSD[i]))     #was 1    
+  #For main_optimisation only [i] and in adx for long and short trades
+
+  #############################################################################################       ENTRY LOGIC
+  
+  #############################################################################################       SHORT
+  
   if (cl > bbands[,"up"]){
-    if (crossed > 3){
+    if (crossed > params$mrShortCrosses[3]){  #was 3
       if(priceGrowing && rsiLowering){  #RSI DIVERGENCE
+        position <- -posSize - currentPos[[i]]  #Go short (trend following)
+        
+        
         #print("Short opp")
-        position <- -params$MRposSizes[params$series[i]] - currentPos[[i]] #Go short (Contrarian)
-        store$stopLoss[i] <- cl*1.02
+        #print(index(cl))
+        
+        #position <- -params$MRposSizes[params$series[i]] - currentPos[[i]] #Go short (Contrarian)
+        store$takeProfit[i] <- cl*0.98
+        store$stopLoss[i] <- cl*1.005
         store$stopLossEntryDate[i] <- store$iter
-        #store$stopLoss <- 
+        #store$stopLoss <-
         #print("HERE")
         #print("short opp")
+
+
+
+        # #Plot Generation Code
+        #          date <- index(cl)  #Trades Date
+        #          dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
+        #          dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
+        #
+        #          #PARAMS (for title)
+        #          adxParam = 25
+        #          emvParam = 0.3
+        #          PlotTitle <- paste("Series",i,"-short-",index(cl),"-adx=",adxParam,"-emv=",emvParam,sep = "")
+        #
+        #          #Generate and Plot Graph
+        #          #pdf(file = (paste("Plots/Momentum/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
+        #          #     width = 10, # The width of the plot in inches
+        #          #     height = 10) # The height of the plot in inches
+        #          d1 <- dataList[[i]]
+        #          graphTitle <- paste("Short Opportunity Traded - Series", i,"-DATE:",index(cl))
+        #          print(c("plotted",graphTitle))
+        #
+        #          #Plotting Function
+        #          chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=1)),subset = dateLimits, name = graphTitle, plot = TRUE)
+        #          addTA(EMA(d1$Close,n=10),on=1)
+        #          addTA(EMA(d1$Close,n=3),on=1)
+        #          abline(v = 8,col = 'blue')   #X-Axis line, date of enter
+        #
+        #
+        #
+        #          #HLCdf2 <- data.frame(d1$High, d1$Low,d1$Close)
+        #          #addTA(ADX(HLCdf2,n=14),on=1)
+        #
+        #          #dev.off()
+
+
+
+
+
       }
     }
   }
-  
 
 
+  #############################################################################################       LONG
   if (cl < bbands[,"dn"]){
-    if (crossed > 3){
+    if (crossed > params$mrCrosses[3]){  #was 3
       if(priceLowering && rsiGrowing){
+        position <- posSize - currentPos[[i]]  #Go long (trend following)
+        
         #print("long opp")
-        position <- params$MRposSizes[params$series[i]] - currentPos[[i]] #Go long (Contrarian)
-        store$stopLoss[i] <- cl*0.98
+        #print(index(cl))
+        #position <- params$MRposSizes[params$series[i]] - currentPos[[i]] #Go long (Contrarian)
+        store$takeProfit[i] <- cl*1.02
+        store$stopLoss[i] <- cl*0.995
         store$stopLossEntryDate[i] <- store$iter
+
+
+
+        #Plot Generation Code
+        # date <- index(cl)  #Trades Date
+        # dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
+        # dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
+        #
+        # #PARAMS (for title)
+        # adxParam = 25
+        # emvParam = 0.3
+        # PlotTitle <- paste("Series",i,"-long-",index(cl),"-adx=",adxParam,"-emv=",emvParam,sep = "")
+        #
+        # #Generate and Plot Graph
+        # #pdf(file = (paste("Plots/Momentum/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
+        # #     width = 10, # The width of the plot in inches
+        # #     height = 10) # The height of the plot in inches
+        # d1 <- dataList[[i]]
+        # graphTitle <- paste("Long Opportunity Traded - Series", i,"-DATE:",index(cl))
+        # print(c("plotted",graphTitle))
+        #
+        # #Plotting Function
+        # chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=1)),subset = dateLimits, name = graphTitle, plot = TRUE)
+        # addTA(EMA(d1$Close,n=10),on=1)
+        # addTA(EMA(d1$Close,n=3),on=1)
+        # abline(v = 8,col = 'blue')   #X-Axis line, date of enter
+
+
+
+        #HLCdf2 <- data.frame(d1$High, d1$Low,d1$Close)
+        #addTA(ADX(HLCdf2,n=14),on=1)
+
+        #dev.off()
+
       }
     }
   }
-  
+
   # print("--------------------------------------")
   # print(store$stopLoss)
   # print(store$stopLossEntryDate)
   #print(keltner[,"mavg"])
+
+  #############################################################################################       EXIT STRATEGY
   
   #My Exit Strategy
+
   if (currentPos[i] >= 1 || position >= 1) {  #Check if i have taken a long position
-    if ((cl >= keltner[,"mavg"]) || (cl <= store$stopLoss[i]) || (store$iter >= store$stopLossEntryDate[i] + 6)) {
+    #if ((cl >= keltner[,"mavg"]) || (cl <= store$stopLoss[i]) || (store$iter >= store$stopLossEntryDate[i] + 6)) {
+    if ((cl <= store$takeProfit[i]) || (cl <= store$stopLoss[i]) || (store$iter >= store$stopLossEntryDate[i] + 6)) {
       position <- -currentPos[i] # Don't stay Long
-      store$stopLoss[i] <- 0 
-      store$stopLossEntryDate[i] <- 0 
+      store$stopLoss[i] <- 0
+      store$stopLossEntryDate[i] <- 0
     }
   }
-  
+
   else if (currentPos[i] <= -1 || position <= -1) { #Check if i have taken a short position
-    if ((cl <= keltner[,"mavg"]) || (cl >= store$stopLoss[i]) || (store$iter >= store$stopLossEntryDate[i] + 6)) {
+    #if ((cl <= keltner[,"mavg"]) || (cl >= store$stopLoss[i]) || (store$iter >= store$stopLossEntryDate[i] + 6)) {
+    if ((cl <= store$takeProfit[i]) || (cl >= store$stopLoss[i]) || (store$iter >= store$stopLossEntryDate[i] + 6)) {
       position <- -currentPos[i] # Don't stay Short
-    } else {
-      #IMPLMENT COUNTING FOR THE NEXT 9 DAYS, then also check if there are no na values also exit
-      #store$stopLoss[i,(which(is.na(a)))[1]] <- 2
+      store$stopLoss[i] <- 0
+      store$stopLossEntryDate[i] <- 0
     }
   }
-  
 
-  #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED
-  
-  #RSI(2) Mean Reversion Strategy P/D = 1
-  ema.n <- last(EMA(store$cl[startIndex:store$iter,i],n=params$mrLookback, wilder = FALSE, ratio = NULL)) # 38 < x < 50             #44 was decent results
-
-  if (rsi.2 <= 10) {  #Oversold Condition could be a buy opportunity (Undervalued)
-    if (cl < ema.n) {   #Close is greater than ema (Mean reversion is possible)
-      if (adx[,4] < params$mrADX) { #Do not want strong upwards momentum #This is just weak momentum regardless                                   # Less than 25
-        #position <- params$posSizes[params$series[i]] - currentPos[[i]] #Go Long (Mean Reversion)
-        
-        #print(index(cl))
-        
-        # date <- index(cl)
-        # dateLimit <- paste(as.Date(date) - 7,"/", as.Date(date)+ 7)  #Set Date Limits, Pre-Week/Post-3Week
-        # dateLimit <- gsub(" ", "", dateLimit, fixed = TRUE)
-        # d1 <- dataList[[i]]
-        # one <- chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=2),addRSI(n=2)),subset = dateLimit, name = paste("Mean Rev +/-7Days - DATE:",entryPoints[i]) )
-        # one.AxisX.Maximum = 5;
-        # addTA(SMA(d1$Close,n=50),on=NA)
-        # abline(v = 8,col = 'blue')   #X-Axis line, date of enter
-        
-  #Plot Generation Code
-        # date <- index(cl)  #Trades Date
-        # dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
-        # dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
-        # 
-        # #PARAMS (for title)
-        # adxParam = 25
-        # PlotTitle <- paste("Series",i,"-long-",index(cl),"-adx=",adxParam,sep = "")
-        # 
-        # #Generate and Plot Graph
-        # #pdf(file = (paste("Plots/Mean/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
-        # #    width = 10, # The width of the plot in inches
-        # #    height = 10) # The height of the plot in inches
-        # d1 <- dataList[[i]]
-        # graphTitle <- paste("Long Opportunity Traded - Series", i,"-DATE:",index(cl))
-        # print(c("plotted",graphTitle))
-        # 
-        # #Plotting Function
-        # chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=2),addRSI(n=2)),subset = dateLimits, name = graphTitle, plot = TRUE)
-        # #addTA(EMA(d1$Close,n=50),on=NA)
-        # #addTA(EMA(d1$Close,n=50),on=NA)
-        # abline(v = 7,col = 'black')   #X-Axis line, date of enter
-        # 
-        # 
-        # #dev.off()
-
-      }
-    }
-  }
-  
-  #SHORTING
-  if (rsi.2 <= 90) { #Overbought Condition could be a sell opportunity (Overvalued)
-    if (cl > ema.n) { #
-      if (adx[,4] < params$mrADX) {
-        #position <- -params$posSizes[params$series[i]] - currentPos[[i]] 
-        
-        #enteredMarketAt <<- cl
-        #print(index(cl))
-      }
-    }
-  }
-  
-  # #My Exit Strategy
-  # if (currentPos[i] >= 1 || position >= 1) {  #Check if i have taken a long position
-  #   if (cl >= ema.n) {
-  #     position <- -currentPos[i] # Don't stay Long
-  #   }
-  # }
-  # 
-  # else if (currentPos[i] <= -1 || position <= -1) { #Check if i have taken a short position
-  #   if (cl <= ema.n) {
-  #     position <- -currentPos[i] # Don't stay Short
-  #   }
-  # }
-  
-  
-  # #RSI(2) Mean Reversion Strategy P/D = 1
-  # 
-  # ema.34 <- last(EMA(store$cl[startIndex:store$iter,i],n=44, wilder = FALSE, ratio = NULL)) # 38 < x < 50
-  # 
-  # # if (cl < bbands[,"dn"]) {   #Possible option for trend reversal
-  # #   if (macd[2,1] < 0){ #BELOW ZERO LINE (MAKES BULLISH MORE SIGNIFICANT)
-  # #     if (rsi <= 30) { 
-  # if (rsi.2 <= 10) {
-  #   if (cl > ema.34){
-  #     #       if ((macd[1,1] < macd[1,2]) && (macd[2,1] > macd[2,2])){ ##CROSS ABOVE SIGNAL LINE (BULLISH)
-  #     if (adx[,4] < 25) {    #WE DO NOT WANT STRONG MOMENTUM AGAINST UP (THIS IS JUST WEAK MOMENTUM REGARDLESS)
-  #       #           if(cl < sma.20) {
-  #       #             if(ema.20 < ema.50) {
-  #       #               #if close is relatively low go long (i.e., Mean Reversion)
-  #       #               #print("ping")
-  #       position <- params$posSizes[params$series[i]] - currentPos[[i]] 
-  #       #             }
-  #       #           }
-  #     }
-  #     #       }
-  #   }
-  # }
-  # #   }
-  # # }
-  # #} #else if (cl >= ema){
-  # # position <- 0
-  # #}
-  # 
-  # 
-  # 
-  # 
-  # # if (cl > bbands[,"up"]) {
-  # #   if (macd[2,1] < 0){ #BELOW ZERO LINE (MAKES BULLISH MORE SIGNIFICANT)
-  # #     if (rsi >= 70) { 
-  # if (rsi.2 <= 90) { 
-  #   if (cl < ema.34){
-  #     #       if(cl > sma.50) {
-  #     #         if ((macd[1,1] < macd[1,2]) && (macd[2,1] > macd[2,2])){ ##CROSS ABOVE SIGNAL LINE (BULLISH)
-  #     if (adx[,4] < 25) {
-  #       #             if(cl > sma.20) {
-  #       #               #if close is relatively low go long (i.e., Mean Reversion)
-  #       #               #print("pong")
-  #       position <- -params$posSizes[params$series[i]] - currentPos[[i]] 
-  #       #             }
-  #     }
-  #     #         }
-  #     #       }
-  #   }
-  # }
-  # # }
-  # 
-  # #} else if (cl <= ema){
-  # #position <- 0
-  # #}
-  
-  
-  
-  
-  # } else if (cl > bbands[,"up"]) {
-  #   if ((macd[1,1] > macd[1,2]) && (macd[2,1] < macd[2,2])){ ##CROSS BELOW
-  #     if (rsi > 70) { 
-  #       #if close is relatively low go long (i.e., Mean Reversion)
-  #       position <- -params$posSizes[params$series[i]] - currentPos[[i]] 
-  #     }
-  #   }
-  # }
-  
-  #Update the store, with the past days rsi values
-  #store$prevRSI.2[i] <- store$prevRSI.1[i]
-  #store$prevRSI.1[i] <- rsi
-  
-  # for (rsiCounter in 9:1){
-  #   store$rsiStore[rsiCounter+1,i] <- store$rsiStore[rsiCounter,i]
-  # }
-  # store$rsiStore[1,i] <- rsi
-  #print(store$rsiStore)
-  
   return(list(position=position, store=store))
 }
 
-
+# MeanRevStrategy <- function(store, newRowList, currentPos, info, params, i, startIndex){ #params inside of the function.
+#   position <- 0
+#   cl <- newRowList[[params$series[i]]]$Close
+#   bbands <- last(BBands(store$cl[startIndex:store$iter,i],
+#                         n=params$lookback,sd=params$sdParamShort))
+# 
+#   posSize <- 30000 / cl
+#   
+#   
+#   #macdlookback  = 7
+#   macd <- last(MACD(store$cl[startIndex:store$iter,i],nFast = params$nfast, nSlow = params$nSlow, nSig = params$nSig, percent = FALSE),2)
+#   #rsi <- last(RSI(store$cl[startIndex:store$iter,i],n=params$rsi))
+#   rsi.2 <- last(RSI(store$cl[startIndex:store$iter,i],n=2))
+#   #print(c(rsi,rsi.2))
+#   ema <- last(EMA(store$cl[startIndex:store$iter,i],n=params$lookback, wilder = FALSE, ratio = NULL))
+#   
+#   HLCdf <- data.frame(High = store$hi[startIndex:store$iter,i],
+#                       Low = store$low[startIndex:store$iter,i],
+#                       Close = store$cl[startIndex:store$iter,i])
+#   adx <- last(ADX(HLCdf,n=params$adx))
+#   
+#   
+#   ema.20 <- last(EMA(store$cl[startIndex:store$iter,i],n=params$lookback, wilder = FALSE, ratio = NULL))
+#   #ema.50 <- last(EMA(store$cl[startIndex:store$iter,i],n=params$lookbackShort, wilder = FALSE, ratio = NULL))
+#   #print(c(ema.20,ema.50))
+#   sma.20 <- last(SMA(store$cl[startIndex:store$iter,i],n=params$lookback))
+#   #sma.50 <- last(SMA(store$cl[startIndex:store$iter,i],n=params$lookbackShort))
+#   
+#   obv <- last(OBV(store$cl[startIndex:store$iter,i],store$vol[startIndex:store$iter,i]))
+#   #print(obv)
+#   
+#   #perChange <- ((sma.50-sma.20) / sma.50)
+#   #perChange <- (((sma.50-cl) / cl) * 100)
+#   #print(perChange)
+#   #print(is.matrix(HLCdf))
+#   
+#   HLCdf <- data.frame(High = store$hi[startIndex:store$iter,i],
+#                       Low = store$low[startIndex:store$iter,i],
+#                       Close = store$cl[startIndex:store$iter,i])
+#   
+#   #ohlcMatrix <- as.xts(OHLCdf)
+#   #print(is.xts(ohlcMatrix)
+#   
+#   
+#   # #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA #NEW IDEA
+#   
+#   #KELTNER CHANNELS FUNCTION
+#   
+#   keltnerChannels <-
+#     function (HLC, n = 20, maType, atr = 2, ...)
+#     {
+#       atrHLC <- HLC
+#       HLC <- try.xts(HLC, error = as.matrix)
+#       if (NCOL(HLC) == 3) {
+#         if (is.xts(HLC)) {
+#           xa <- xcoredata(HLC)
+#           HLC <- xts(apply(HLC, 1, mean), index(HLC))
+#           xcoredata(HLC) <- xa
+#         }
+#         else {
+#           HLC <- apply(HLC, 1, mean)
+#         }
+#       }
+#       else if (NCOL(HLC) != 1) {
+#         stop("Price series must be either High-Low-Close, or Close/univariate.")
+#       }
+#       maArgs <- list(n = n, ...)
+#       if (missing(maType)) {
+#         maType <- "EMA"
+#       }
+#       mavg <- do.call(maType, c(list(HLC), maArgs))
+#       avgtruerange <- ATR(atrHLC, n = n)
+#       
+#       up <- mavg + atr * avgtruerange[,2]
+#       dn <- mavg - atr * avgtruerange[,2]
+#       
+#       res <- cbind(dn, mavg, up)
+#       colnames(res) <- c("dn", "mavg", "up")
+#       reclass(res, HLC)
+#     }
+#   
+#   #RSI CALCUALTION FUNCTION 
+#   
+#   rsiCalc <-	function(clStore,column,iter) {
+#     startIndex <- iter - params$lookback - 1 # needs 2 extra periods
+#     rsi <- last(RSI(clStore[startIndex:iter,column],n=params$rsi))
+#     return(rsi)
+#   }
+#   
+#   
+# 
+#   
+#   #print(crossed)
+#   
+#   #RSI DIVERGENCE
+#   
+#   last10ClosePrice <- last(store$cl[startIndex:store$iter,i],21)  #LAST 10 DAYS (CLOSE PRICES)
+#   #last10ClosePrice <- head(last10ClosePrice,-1) #REMOVE TODAY
+#   #print(last10ClosePrice)
+#   localHigh <- max(last10ClosePrice)
+#   localLow <- min(last10ClosePrice)
+#   
+#   rsi <- rsiCalc(store$cl,i,store$iter)
+#   for (rsiCounter in 20:1){
+#     store$rsiStore[rsiCounter+1,i] <- store$rsiStore[rsiCounter,i]
+#   }
+#   store$rsiStore[1,i] <- rsi
+#   
+#   #My METHOD USUING THE STORE
+#   last10RSI <- rev(store$rsiStore[,i])  #SELECT FOR THIS SERIES ONLY!!!
+#   
+#   #print("---------------")
+#   #print(rsi)
+#   #print(last10RSI)
+#   #print(last10ClosePrice)
+#   
+#   rsiLowering <- FALSE
+#   rsiGrowing <- FALSE
+#   priceLowering <- FALSE
+#   priceGrowing <- FALSE
+#   
+#   if (!any(is.na(last10RSI))){
+#     peak20 <- max(last10RSI[1:5])
+#     peak15 <- max(last10RSI[6:10])
+#     peak10 <- max(last10RSI[11:15])
+#     peak05 <- max(last10RSI[16:20])
+#     
+#     peak11To20 <- max(peak20,peak15)
+#     peak01To10 <- max(peak10,peak05)
+#     
+#     if((peak11To20 > peak01To10))  {
+#       #print("LoweringPeaks")
+#       rsiLowering <- TRUE
+#     }
+#     if((peak11To20 < peak01To10))  {
+#       #print("GrowingPeaks")
+#       rsiGrowing <- TRUE
+#     }
+#     
+#     
+#     
+#     # if((peak15 > peak10) && (peak10 > peak05))  {
+#     #   #print("LoweringPeaks")
+#     #   rsiLowering <- TRUE
+#     # }
+#     # if((peak15 < peak10) && (peak10 < peak05))  {
+#     #   #print("GrowingPeaks")
+#     #   rsiGrowing <- TRUE
+#     # }
+#   }
+#   
+#   
+#   peak20Cl <- max(last10ClosePrice[1:5])
+#   peak15Cl <- max(last10ClosePrice[6:10])
+#   peak10Cl <- max(last10ClosePrice[11:15])
+#   peak05Cl <- max(last10ClosePrice[16:20])
+#   
+#   peak11To20Cl <- max(peak20Cl,peak15Cl)
+#   peak01To10Cl <- max(peak10Cl,peak05Cl)
+#   
+#   
+#   if((peak11To20Cl > peak01To10Cl) )  {
+#     #print("LoweringPeaks")
+#     priceLowering <- TRUE
+#   }
+#   if((peak11To20Cl < peak01To10Cl))  {
+#     #print("GrowingPeaks")
+#     priceGrowing <- TRUE
+#   }
+#   
+#   # if((peak15Cl > peak10Cl) && (peak10Cl > peak05Cl) )  {
+#   #   #print("LoweringPeaks")
+#   #   priceLowering <- TRUE
+#   # }
+#   # if((peak15Cl < peak10Cl) && (peak10Cl < peak05Cl))  {
+#   #   #print("GrowingPeaks")
+#   #   priceGrowing <- TRUE
+#   # }
+#   
+#   
+#   
+#   
+#   
+#   #####THESE DIVERGENCES ARE RAREEEEEE MAYBE LOWER FROM 20 to 15?
+#   
+#   #print(last10RSI)
+#   
+#   #can test for divergence here....
+#   
+#   #last10rsi <- tail(rsi, n =10)
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+#   
+#   #print("-------------------------------------------------")
+#   #rsi <- rsiCalc(store$cl,i,store$iter)
+#   #last10Rsi <- tail(rsi, n = 5)#
+#   #print(last10Rsi)
+#   
+#   
+#   
+#   
+#   
+#   #print("-------------------------------------------------")
+#   # rsiTMP <- RSI(store$cl[startIndex:store$iter,i])
+#   # #if(i == 8)  {
+#   # #  print("IN 8")
+#   # #}
+#   # last5TMP <- tail(rsiTMP, n = 5)
+#   # #print(last5TMP)
+#   
+#   
+#   
+#   
+#   
+#   #print(last10RSI)
+#   #print(!any(is.na(last10RSI)))
+#   #print(last10ClosePrice)
+#   
+#   #print(abs(closePrice - last10RSI))  #If larger = Divergence
+#   
+#   
+#   
+#   #print(rev(store$rsiStore[,i])) ##This is the last 10 days (most recent day is far right) 
+#   #print(cl)
+#   #print(closePrice)     #Past 9 days then today...
+#   #print(last10RSI)     #Past 9 days then today...
+#   
+#   
+#   #print(store$stopLoss)
+#   #print(store$rsiStore)
+#   
+#   #print(cl)
+#   #print("BReak")
+#   #print(cl*1.02)
+#   
+#   keltner <- last(keltnerChannels(HLCdf, atr=1))
+#   #Crossed is calculated above
+#   
+#   #NEED TO SORT OUT DIVERGENCE
+#   
+#   bbands <- last(BBands(store$cl[startIndex:store$iter,i],
+#                         n=params$lookback,sd=1))       #For main_optimisation only [i] and in adx for long and short trades
+#   
+#   #print(bbands)
+#   
+#   
+#   
+#   
+#   #CROSSES FUNCTION
+#   #HOW MANY TIMES HAS SMA 3/10 CROSSED IN THE PAST 10 DAYS
+#   crossingLookback <- 20
+#   crossed <- 0
+#   # sma.3 <- last(SMA(store$cl[startIndex:store$iter,i],n=3),crossingLookback)
+#   # sma.10 <- last(SMA(store$cl[startIndex:store$iter,i],n=10),crossingLookback)
+#   sma.3 <- last(EMA(store$cl[startIndex:store$iter,i],n=3),crossingLookback)
+#   sma.10 <- last(EMA(store$cl[startIndex:store$iter,i],n=10),crossingLookback)
+#   
+#   for (crossCount in 2:crossingLookback){
+#     if((sma.3[crossCount-1] < sma.10[crossCount-1]) && ((sma.3[crossCount] > sma.10[crossCount])))  {
+#       crossed <-  crossed + 1
+#     } else if ((sma.3[crossCount-1] > sma.10[crossCount-1]) && ((sma.3[crossCount] < sma.10[crossCount])))  {
+#       #crossed <-  crossed + 1
+#     }
+#   }
+#   
+#   #print(crossed)
+#   
+#   dpo <- (DPO(store$cl[startIndex:store$iter,i], n=14))
+#   dpo <- (dpo)
+#   
+#   rsi <- rsiCalc(store$cl,i,store$iter)
+#   
+#   
+#   
+#   
+#   
+#   #if(dpo < 0){
+#     if(rsi < 30){
+#       print(dpo)
+#       print(rsi)
+#      # Plot Generation Code
+#       date <- index(cl)  #Trades Date
+#       dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 7)  #Set Date Limits, Pre-Week/Post-3Week
+#       dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
+#       
+#       #PARAMS (for title)
+#       adxParam = 25
+#       emvParam = 0.3
+#       PlotTitle <- paste("Series",i,"-short-",index(cl),"-adx=",adxParam,"-emv=",emvParam,sep = "")
+#       
+#       #Generate and Plot Graph
+#       #pdf(file = (paste("Plots/Momentum/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
+#       #     width = 10, # The width of the plot in inches
+#       #     height = 10) # The height of the plot in inches
+#       d1 <- dataList[[i]]
+#       graphTitle <- paste("Short Opportunity Traded - Series", i,"-DATE:",index(cl))
+#       print(c("plotted",graphTitle))
+#       
+#       #Plotting Function
+#       chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=1),addDPO(n=14),addRSI()),subset = dateLimits, name = graphTitle, plot = TRUE)
+#       addTA(EMA(d1$Close,n=10),on=1)
+#       addTA(EMA(d1$Close,n=3),on=1)
+#       abline(v = 8,col = 'blue')   #X-Axis line, date of enter
+#       
+#       
+#       
+#       #HLCdf2 <- data.frame(d1$High, d1$Low,d1$Close)
+#       #addTA(ADX(HLCdf2,n=14),on=1)
+#       
+#       #dev.off()                       
+#   
+#     }
+#   #}
+#   # if (cl < bbands[,"dn"]){
+#   #   if(priceGrowing && rsiLowering){  #RSI DIVERGENCE
+#   #     crossAbove <<- crossAbove + 1
+#   #     #Plot Generation Code
+#   #                  date <- index(cl)  #Trades Date
+#   #                  dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
+#   #                  dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
+#   # 
+#   #                  #PARAMS (for title)
+#   #                  adxParam = 25
+#   #                  emvParam = 0.3
+#   #                  PlotTitle <- paste("Series",i,"-short-",index(cl),"-adx=",adxParam,"-emv=",emvParam,sep = "")
+#   # 
+#   #                  #Generate and Plot Graph
+#   #                  #pdf(file = (paste("Plots/Momentum/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
+#   #                  #     width = 10, # The width of the plot in inches
+#   #                  #     height = 10) # The height of the plot in inches
+#   #                  d1 <- dataList[[i]]
+#   #                  graphTitle <- paste("Short Opportunity Traded - Series", i,"-DATE:",index(cl))
+#   #                  print(c("plotted",graphTitle))
+#   # 
+#   #                  #Plotting Function
+#   #                  chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=1),addDPO()),subset = dateLimits, name = graphTitle, plot = TRUE)
+#   #                  addTA(EMA(d1$Close,n=10),on=1)
+#   #                  addTA(EMA(d1$Close,n=3),on=1)
+#   #                  abline(v = 8,col = 'blue')   #X-Axis line, date of enter
+#   # 
+#   # 
+#   # 
+#   #                  #HLCdf2 <- data.frame(d1$High, d1$Low,d1$Close)
+#   #                  #addTA(ADX(HLCdf2,n=14),on=1)
+#   # 
+#   #                  #dev.off()
+#   #   }
+#   # }
+#   # 
+#   # #if (crossed > 2){
+#   #   if(priceGrowing && rsiLowering){  #RSI DIVERGENCE
+#   #     crossAbove <<- crossAbove + 1
+#   #   }
+#   # #}
+#     #crossAbove <<- crossAbove + 1
+#     
+#     # if(priceGrowing && rsiLowering){  #RSI DIVERGENCE
+#     #     #print("Short opp")
+#     #     #print(index(cl))
+#     #     position <- -posSize - currentPos[[i]]  #Go long (trend following)
+#     #     #position <- -params$MRposSizes[params$series[i]] - currentPos[[i]] #Go short (Contrarian)
+#     #     store$takeProfit[i] <- cl*0.98
+#     #     store$stopLoss[i] <- cl*1.005
+#     #     store$stopLossEntryDate[i] <- store$iter
+#     #     #store$stopLoss <- 
+#     #     #print("HERE")
+#     #     #print("short opp")
+#     #     
+#     #     
+#     #     
+#     #     # #Plot Generation Code
+#     #     #          date <- index(cl)  #Trades Date
+#     #     #          dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
+#     #     #          dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
+#     #     # 
+#     #     #          #PARAMS (for title)
+#     #     #          adxParam = 25
+#     #     #          emvParam = 0.3
+#     #     #          PlotTitle <- paste("Series",i,"-short-",index(cl),"-adx=",adxParam,"-emv=",emvParam,sep = "")
+#     #     # 
+#     #     #          #Generate and Plot Graph
+#     #     #          #pdf(file = (paste("Plots/Momentum/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
+#     #     #          #     width = 10, # The width of the plot in inches
+#     #     #          #     height = 10) # The height of the plot in inches
+#     #     #          d1 <- dataList[[i]]
+#     #     #          graphTitle <- paste("Short Opportunity Traded - Series", i,"-DATE:",index(cl))
+#     #     #          print(c("plotted",graphTitle))
+#     #     # 
+#     #     #          #Plotting Function
+#     #     #          chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=1)),subset = dateLimits, name = graphTitle, plot = TRUE)
+#     #     #          addTA(EMA(d1$Close,n=10),on=1)
+#     #     #          addTA(EMA(d1$Close,n=3),on=1)
+#     #     #          abline(v = 8,col = 'blue')   #X-Axis line, date of enter
+#     #     # 
+#     #     # 
+#     #     # 
+#     #     #          #HLCdf2 <- data.frame(d1$High, d1$Low,d1$Close)
+#     #     #          #addTA(ADX(HLCdf2,n=14),on=1)
+#     #     # 
+#     #     #          #dev.off()
+#     #     
+#     #     
+#     #     
+#     #     
+#     #     
+#     # 
+#     # }
+#   #}
+#   
+#   
+#   
+#   # if (cl < bbands[,"dn"]){
+#   #   if (crossed > 3){
+#   #     if(priceLowering && rsiGrowing){
+#   #       #print("long opp")
+#   #       #print(index(cl))
+#   #       position <- posSize - currentPos[[i]]  #Go long (trend following)
+#   #       #position <- params$MRposSizes[params$series[i]] - currentPos[[i]] #Go long (Contrarian)
+#   #       store$takeProfit[i] <- cl*1.02
+#   #       store$stopLoss[i] <- cl*0.995
+#   #       store$stopLossEntryDate[i] <- store$iter
+#   #       
+#   #       
+#   #       
+#   #       #Plot Generation Code
+#   #       # date <- index(cl)  #Trades Date
+#   #       # dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
+#   #       # dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
+#   #       # 
+#   #       # #PARAMS (for title)
+#   #       # adxParam = 25
+#   #       # emvParam = 0.3
+#   #       # PlotTitle <- paste("Series",i,"-long-",index(cl),"-adx=",adxParam,"-emv=",emvParam,sep = "")
+#   #       # 
+#   #       # #Generate and Plot Graph
+#   #       # #pdf(file = (paste("Plots/Momentum/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
+#   #       # #     width = 10, # The width of the plot in inches
+#   #       # #     height = 10) # The height of the plot in inches
+#   #       # d1 <- dataList[[i]]
+#   #       # graphTitle <- paste("Long Opportunity Traded - Series", i,"-DATE:",index(cl))
+#   #       # print(c("plotted",graphTitle))
+#   #       # 
+#   #       # #Plotting Function
+#   #       # chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=1)),subset = dateLimits, name = graphTitle, plot = TRUE)
+#   #       # addTA(EMA(d1$Close,n=10),on=1)
+#   #       # addTA(EMA(d1$Close,n=3),on=1)
+#   #       # abline(v = 8,col = 'blue')   #X-Axis line, date of enter
+#   #       
+#   #       
+#   #       
+#   #       #HLCdf2 <- data.frame(d1$High, d1$Low,d1$Close)
+#   #       #addTA(ADX(HLCdf2,n=14),on=1)
+#   #       
+#   #       #dev.off()
+#   #       
+#   #     }
+#   #   }
+#   # }
+#   # 
+#   # # print("--------------------------------------")
+#   # # print(store$stopLoss)
+#   # # print(store$stopLossEntryDate)
+#   # #print(keltner[,"mavg"])
+#   # 
+#   # #My Exit Strategy
+#   # 
+#   # if (currentPos[i] >= 1 || position >= 1) {  #Check if i have taken a long position
+#   #   #if ((cl >= keltner[,"mavg"]) || (cl <= store$stopLoss[i]) || (store$iter >= store$stopLossEntryDate[i] + 6)) {
+#   #   if ((cl <= store$takeProfit[i]) || (cl <= store$stopLoss[i])) {
+#   #     position <- -currentPos[i] # Don't stay Long
+#   #     store$stopLoss[i] <- 0
+#   #     store$stopLossEntryDate[i] <- 0
+#   #   }
+#   # }
+#   # 
+#   # else if (currentPos[i] <= -1 || position <= -1) { #Check if i have taken a short position
+#   #   #if ((cl <= keltner[,"mavg"]) || (cl >= store$stopLoss[i]) || (store$iter >= store$stopLossEntryDate[i] + 6)) {
+#   #   if ((cl <= store$takeProfit[i]) || (cl >= store$stopLoss[i])) {
+#   #     position <- -currentPos[i] # Don't stay Short
+#   #     store$stopLoss[i] <- 0
+#   #     store$stopLossEntryDate[i] <- 0
+#   #   } else {
+#   #     #IMPLMENT COUNTING FOR THE NEXT 9 DAYS, then also check if there are no na values also exit
+#   #     #store$stopLoss[i,(which(is.na(a)))[1]] <- 2
+#   #   }
+#   # }
+#   
+#   
+#   #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED #NEW STRAT ENDED
+#   
+#   #RSI(2) Mean Reversion Strategy P/D = 1
+#   ema.n <- last(EMA(store$cl[startIndex:store$iter,i],n=params$mrLookback, wilder = FALSE, ratio = NULL)) # 38 < x < 50             #44 was decent results
+#   
+#   if (rsi.2 <= 10) {  #Oversold Condition could be a buy opportunity (Undervalued)
+#     if (cl < ema.n) {   #Close is greater than ema (Mean reversion is possible)
+#       if (adx[,4] < params$mrADX) { #Do not want strong upwards momentum #This is just weak momentum regardless                                   # Less than 25
+#         #position <- params$posSizes[params$series[i]] - currentPos[[i]] #Go Long (Mean Reversion)
+#         
+#         #print(index(cl))
+#         
+#         # date <- index(cl)
+#         # dateLimit <- paste(as.Date(date) - 7,"/", as.Date(date)+ 7)  #Set Date Limits, Pre-Week/Post-3Week
+#         # dateLimit <- gsub(" ", "", dateLimit, fixed = TRUE)
+#         # d1 <- dataList[[i]]
+#         # one <- chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=2),addRSI(n=2)),subset = dateLimit, name = paste("Mean Rev +/-7Days - DATE:",entryPoints[i]) )
+#         # one.AxisX.Maximum = 5;
+#         # addTA(SMA(d1$Close,n=50),on=NA)
+#         # abline(v = 8,col = 'blue')   #X-Axis line, date of enter
+#         
+#         #Plot Generation Code
+#         # date <- index(cl)  #Trades Date
+#         # dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
+#         # dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
+#         # 
+#         # #PARAMS (for title)
+#         # adxParam = 25
+#         # PlotTitle <- paste("Series",i,"-long-",index(cl),"-adx=",adxParam,sep = "")
+#         # 
+#         # #Generate and Plot Graph
+#         # #pdf(file = (paste("Plots/Mean/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
+#         # #    width = 10, # The width of the plot in inches
+#         # #    height = 10) # The height of the plot in inches
+#         # d1 <- dataList[[i]]
+#         # graphTitle <- paste("Long Opportunity Traded - Series", i,"-DATE:",index(cl))
+#         # print(c("plotted",graphTitle))
+#         # 
+#         # #Plotting Function
+#         # chartSeries(d1$Close,theme='white',TA=c(addBBands(n=50,sd=2),addRSI(n=2)),subset = dateLimits, name = graphTitle, plot = TRUE)
+#         # #addTA(EMA(d1$Close,n=50),on=NA)
+#         # #addTA(EMA(d1$Close,n=50),on=NA)
+#         # abline(v = 7,col = 'black')   #X-Axis line, date of enter
+#         # 
+#         # 
+#         # #dev.off()
+#         
+#       }
+#     }
+#   }
+#   
+#   #SHORTING
+#   if (rsi.2 <= 90) { #Overbought Condition could be a sell opportunity (Overvalued)
+#     if (cl > ema.n) { #
+#       if (adx[,4] < params$mrADX) {
+#         #position <- -params$posSizes[params$series[i]] - currentPos[[i]] 
+#         
+#         #enteredMarketAt <<- cl
+#         #print(index(cl))
+#       }
+#     }
+#   }
+#   
+#   # #My Exit Strategy
+#   # if (currentPos[i] >= 1 || position >= 1) {  #Check if i have taken a long position
+#   #   if (cl >= ema.n) {
+#   #     position <- -currentPos[i] # Don't stay Long
+#   #   }
+#   # }
+#   # 
+#   # else if (currentPos[i] <= -1 || position <= -1) { #Check if i have taken a short position
+#   #   if (cl <= ema.n) {
+#   #     position <- -currentPos[i] # Don't stay Short
+#   #   }
+#   # }
+#   
+#   
+#   # #RSI(2) Mean Reversion Strategy P/D = 1
+#   # 
+#   # ema.34 <- last(EMA(store$cl[startIndex:store$iter,i],n=44, wilder = FALSE, ratio = NULL)) # 38 < x < 50
+#   # 
+#   # # if (cl < bbands[,"dn"]) {   #Possible option for trend reversal
+#   # #   if (macd[2,1] < 0){ #BELOW ZERO LINE (MAKES BULLISH MORE SIGNIFICANT)
+#   # #     if (rsi <= 30) { 
+#   # if (rsi.2 <= 10) {
+#   #   if (cl > ema.34){
+#   #     #       if ((macd[1,1] < macd[1,2]) && (macd[2,1] > macd[2,2])){ ##CROSS ABOVE SIGNAL LINE (BULLISH)
+#   #     if (adx[,4] < 25) {    #WE DO NOT WANT STRONG MOMENTUM AGAINST UP (THIS IS JUST WEAK MOMENTUM REGARDLESS)
+#   #       #           if(cl < sma.20) {
+#   #       #             if(ema.20 < ema.50) {
+#   #       #               #if close is relatively low go long (i.e., Mean Reversion)
+#   #       #               #print("ping")
+#   #       position <- params$posSizes[params$series[i]] - currentPos[[i]] 
+#   #       #             }
+#   #       #           }
+#   #     }
+#   #     #       }
+#   #   }
+#   # }
+#   # #   }
+#   # # }
+#   # #} #else if (cl >= ema){
+#   # # position <- 0
+#   # #}
+#   # 
+#   # 
+#   # 
+#   # 
+#   # # if (cl > bbands[,"up"]) {
+#   # #   if (macd[2,1] < 0){ #BELOW ZERO LINE (MAKES BULLISH MORE SIGNIFICANT)
+#   # #     if (rsi >= 70) { 
+#   # if (rsi.2 <= 90) { 
+#   #   if (cl < ema.34){
+#   #     #       if(cl > sma.50) {
+#   #     #         if ((macd[1,1] < macd[1,2]) && (macd[2,1] > macd[2,2])){ ##CROSS ABOVE SIGNAL LINE (BULLISH)
+#   #     if (adx[,4] < 25) {
+#   #       #             if(cl > sma.20) {
+#   #       #               #if close is relatively low go long (i.e., Mean Reversion)
+#   #       #               #print("pong")
+#   #       position <- -params$posSizes[params$series[i]] - currentPos[[i]] 
+#   #       #             }
+#   #     }
+#   #     #         }
+#   #     #       }
+#   #   }
+#   # }
+#   # # }
+#   # 
+#   # #} else if (cl <= ema){
+#   # #position <- 0
+#   # #}
+#   
+#   
+#   
+#   
+#   # } else if (cl > bbands[,"up"]) {
+#   #   if ((macd[1,1] > macd[1,2]) && (macd[2,1] < macd[2,2])){ ##CROSS BELOW
+#   #     if (rsi > 70) { 
+#   #       #if close is relatively low go long (i.e., Mean Reversion)
+#   #       position <- -params$posSizes[params$series[i]] - currentPos[[i]] 
+#   #     }
+#   #   }
+#   # }
+#   
+#   #Update the store, with the past days rsi values
+#   #store$prevRSI.2[i] <- store$prevRSI.1[i]
+#   #store$prevRSI.1[i] <- rsi
+#   
+#   # for (rsiCounter in 9:1){
+#   #   store$rsiStore[rsiCounter+1,i] <- store$rsiStore[rsiCounter,i]
+#   # }
+#   # store$rsiStore[1,i] <- rsi
+#   #print(store$rsiStore)
+#   
+#   return(list(position=position, store=store))
+# }
 
 
 MeanRevStrategy2 <- function(store, newRowList, currentPos, info, params, i, startIndex){ #params inside of the function.
@@ -1179,15 +1793,19 @@ MarketMakingStrategy <- function(store, newRowList, currentPos, info, params, i,
     prevRSI.1 <- vector(mode="double",length=length(series))
     prevRSI.2 <- vector(mode="double",length=length(series))
     rsiStore <- matrix(ncol= 10, nrow = 21)
+    takeProfit <- vector(mode="double",length=length(series))
     stopLoss <- vector(mode="double",length=length(series))
     stopLossEntryDate <- vector(mode="double",length=length(series))
+    longEntryStop <- vector(mode="double",length=length(series))
+    shortEntryStop <- vector(mode="double",length=length(series))
     #stopLoss <- matrix(ncol= 10, nrow = 10)
     count <- vector(mode="numeric",length=length(series)) # stores # of days in trade
     return(list(iter=0,cl=initClStore(newRowList,series),vol=initVolStore(newRowList,series)
                 ,hi=initHiStore(newRowList,series),low=initLowStore(newRowList,series)
                 ,op=initLowStore(newRowList,series),count = count,currentHigh = currentHigh
                 ,prevRSI.1 = prevRSI.1,prevRSI.2 = prevRSI.2,rsiStore = rsiStore,stopLoss = stopLoss
-                ,stopLossEntryDate = stopLossEntryDate))
+                ,stopLossEntryDate = stopLossEntryDate,takeProfit = takeProfit, longEntryStop = longEntryStop,
+                shortEntryStop = shortEntryStop))
   }
   updateStore <- function(store, newRowList, series) {
     store$iter <- store$iter + 1
