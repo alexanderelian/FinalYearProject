@@ -258,14 +258,14 @@ for (i in 1:10){
       
       #plotdataHIT <- rbind(plotdataHIT, as.double(vr2[c-1]))
       
-      PerChange.5 <- ((as.double(close[c-1]) - as.double(close[c-5])) / as.double(close[c-5])) * 100 
-      plotdataHIT <- rbind(plotdataHIT, as.double(PerChange.5))
-      PerChange.10 <- ((as.double(close[c-1]) - as.double(close[c-10])) / as.double(close[c-10])) * 100 
-      plotdataHIT2 <- rbind(plotdataHIT2, as.double(PerChange.10))
+      #PerChange.5 <- ((as.double(close[c-1]) - as.double(close[c-5])) / as.double(close[c-5])) * 100 
+      #plotdataHIT <- rbind(plotdataHIT, as.double(PerChange.5))
+      #PerChange.10 <- ((as.double(close[c-1]) - as.double(close[c-10])) / as.double(close[c-10])) * 100 
+      #plotdataHIT2 <- rbind(plotdataHIT2, as.double(PerChange.10))
       
-      #bband <- bbands[c-1]
-      #bband <- bband[,"bndWidth"]
-      #plotdataHIT <- rbind(plotdataHIT, as.double(bband))
+      bband <- bbands[c-1]
+      bband <- bband[,"bndWidth"]
+      plotdataHIT <- rbind(plotdataHIT, as.double(bband))
       
     } else {
       dncount <- dncount+1
@@ -279,14 +279,14 @@ for (i in 1:10){
       
       #plotdataMIS <- rbind(plotdataMIS, as.double(vr2[c-1]))
       
-      PerChange.5 <- ((as.double(close[c-1]) - as.double(close[c-5])) / as.double(close[c-5])) * 100 
-      plotdataMIS <- rbind(plotdataMIS, as.double(PerChange.5))
-      PerChange.10 <- ((as.double(close[c-1]) - as.double(close[c-10])) / as.double(close[c-10])) * 100 
-      plotdataMIS2 <- rbind(plotdataMIS2, as.double(PerChange.10))
+      #PerChange.5 <- ((as.double(close[c-1]) - as.double(close[c-5])) / as.double(close[c-5])) * 100 
+      #plotdataMIS <- rbind(plotdataMIS, as.double(PerChange.5))
+      #PerChange.10 <- ((as.double(close[c-1]) - as.double(close[c-10])) / as.double(close[c-10])) * 100 
+      #plotdataMIS2 <- rbind(plotdataMIS2, as.double(PerChange.10))
       
-      #bband <- bbands[c-1]
-      #bband <- bband[,"bndWidth"]
-      #plotdataMIS <- rbind(plotdataMIS, as.double(bband))
+      bband <- bbands[c-1]
+      bband <- bband[,"bndWidth"]
+      plotdataMIS <- rbind(plotdataMIS, as.double(bband))
       
       
       
@@ -416,7 +416,7 @@ for (i in 1:10){
   }
   spreadMatrix <- rbind(spreadMatrix, c(upcount,eqcount,dncount))
   
-  par(mfrow = c(2, 2))
+  par(mfrow = c(1, 1))  ##HOW MANY PLOTS ON ONE PDF
   
   plotdataHIT <- na.omit(plotdataHIT[-1])  #REMOVE THE FIRST VALUE
   plotdataMIS <- na.omit(plotdataMIS[-1])
@@ -429,26 +429,94 @@ for (i in 1:10){
   minVAL <- min(c(minHIT, minMIS))
   
   
-  plotdataHIT2 <- na.omit(plotdataHIT2[-1])  #REMOVE THE FIRST VALUE
-  plotdataMIS2 <- na.omit(plotdataMIS2[-1])
-  maxHIT2 <- max(plotdataHIT2)
-  maxMIS2 <- max(plotdataMIS2)
-  maxVAL2 <- max(c(maxHIT2, maxMIS2))
-  
-  minHIT2 <- min(plotdataHIT2)
-  minMIS2 <- min(plotdataMIS2)
-  minVAL2 <- min(c(minHIT2, minMIS2))
+  #plotdataHIT2 <- na.omit(plotdataHIT2[-1])  #REMOVE THE FIRST VALUE
+  #plotdataMIS2 <- na.omit(plotdataMIS2[-1])
+  #maxHIT2 <- max(plotdataHIT2)
+  #maxMIS2 <- max(plotdataMIS2)
+  #maxVAL2 <- max(c(maxHIT2, maxMIS2))
+#  
+  #minHIT2 <- min(plotdataHIT2)
+  #minMIS2 <- min(plotdataMIS2)
+  #minVAL2 <- min(c(minHIT2, minMIS2))
   
   #SAVE TO THE FOLDER
   #dev.copy(pdf,file=paste('/Users/alexe/OneDrive/Desktop/backtester_v5.5 (1)/backtester_v5.5/plots/Market Making/Volatility Plots/PerChange/Histogram',i,'.pdf') ,
   #         width = 10, # The width of the plot in inches
   #          height = 10) # The height of the plot in inches
-  h1 <- hist(plotdataHIT, xlab ="Volatility Value", xlim = c(floor(minVAL),ceiling(maxVAL)), ylim = c(0,300), breaks = seq(floor(minVAL),ceiling(maxVAL), 0.2), main = plotTitle)
-  h2 <- hist(plotdataHIT2, xlab ="Volatility Value", xlim = c(floor(minVAL2),ceiling(maxVAL2)), ylim = c(0,300), breaks = seq(floor(minVAL2),ceiling(maxVAL2), 0.2), main = plotTitle2)
+  #h1 <- hist(plotdataHIT, xlab ="Volatility Value", xlim = c(floor(minVAL),ceiling(maxVAL)), ylim = c(0,300), breaks = seq(floor(minVAL),ceiling(maxVAL), 0.2), main = plotTitle)
+  #h2 <- hist(plotdataHIT2, xlab ="Volatility Value", xlim = c(floor(minVAL2),ceiling(maxVAL2)), ylim = c(0,300), breaks = seq(floor(minVAL2),ceiling(maxVAL2), 0.2), main = plotTitle2)
   
-  m1 <- hist(plotdataMIS, xlab ="Volatility Value", xlim = c(floor(minVAL),ceiling(maxVAL)), ylim = c(0,300), breaks = seq(floor(minVAL),ceiling(maxVAL), 0.2), main = plotTitleMIS)
-  m2 <- hist(plotdataMIS2, xlab ="Volatility Value", xlim = c(floor(minVAL2),ceiling(maxVAL2)), ylim = c(0,300), breaks = seq(floor(minVAL2),ceiling(maxVAL2), 0.2), main = plotTitleMIS2)
+  #m1 <- hist(plotdataMIS, xlab ="Volatility Value", xlim = c(floor(minVAL),ceiling(maxVAL)), ylim = c(0,300), breaks = seq(floor(minVAL),ceiling(maxVAL), 0.2), main = plotTitleMIS)
+  #m2 <- hist(plotdataMIS2, xlab ="Volatility Value", xlim = c(floor(minVAL2),ceiling(maxVAL2)), ylim = c(0,300), breaks = seq(floor(minVAL2),ceiling(maxVAL2), 0.2), main = plotTitleMIS2)
   #dev.off()
+  
+  
+  #print(plotdataHIT)
+  #print(plotdataMIS)
+  
+  #print(minVAL)
+  #print(maxVAL)
+  
+  #Floor and Ceiling the valies
+  minBin <- floor(minVAL)
+  maxBin <- ceiling(maxVAL)
+  
+  #print(minBin)
+  #print(maxBin)
+  binWidth <- 0.1
+  range <- maxBin - minBin
+  totalBins <- range / binWidth
+  #print(totalBins)
+  
+  #vgspreadMatrix <- matrix(ncol= 1, nrow = 0)
+  HMMatrix <- matrix(data=0,nrow=2,ncol=totalBins)
+  #print(HMMatrix)
+  
+  for (hitLoop in 1:length(plotdataHIT))  {
+    for (counter in 1:totalBins) {
+      x <- plotdataHIT[hitLoop]
+      if((x > binWidth*(counter-1) && x < binWidth*(counter))){
+        #print(paste("bindwith is: ", binWidth*(counter-1), " to ", binWidth*(counter)))
+        HMMatrix[1,counter] <- HMMatrix[1,counter] + 1
+      }
+    }
+  }
+  for (misLoop in 1:length(plotdataMIS))  {
+    for (counter in 1:totalBins) {
+      x <- plotdataMIS[misLoop]
+      if((binWidth*(counter-1) < x && x <= binWidth*(counter))){
+        #print(paste("bindwith is: ", binWidth*(counter-1), " to ", binWidth*(counter)))
+        HMMatrix[2,counter] <- HMMatrix[2,counter] + 1
+      }
+    }
+  }
+  #print(length(plotdataHIT))
+  #print(length(plotdataMIS))
+  
+  #HMMatrix
+  colnames(HMMatrix) <- as.character(seq(from=minBin+binWidth, to=maxBin, by=binWidth))
+  rownames(HMMatrix) <- c("Hit", "Miss")
+  
+  library(RColorBrewer)
+
+  coul <- brewer.pal(3, "Set1") 
+  coul <- head(coul, -1)
+  coul <- rev(coul)
+  # Transform this data in %
+  data_percentage <- apply(HMMatrix, 2, function(x){x*100/sum(x,na.rm=T)})
+  
+  # Make a stacked barplot--> it will be in %!
+  print(paste("-------- SERIES ",i," --------"))
+  print(HMMatrix)
+  
+  dev.copy(pdf,file=paste('/Users/alexe/OneDrive/Desktop/backtester_v5.5 (1)/backtester_v5.5/plots/Market Making/Volatility Plots/bbandwidth/StackedPercentage',i,'.pdf') ,
+           width = 10, # The width of the plot in inches
+            height = 10) # The height of the plot in inches
+  StackedChart <-  paste("Series", i, " - ", "Indicator: BBandWidth","      (Blue = Hit / Red = Miss)")
+  barplot(main=StackedChart,data_percentage, col=coul , border="white", xlab="Volatility Values (LessThan or EqualTo)", ylab="Percentage (%)")
+  dev.off()
+  #addtable2plot(table=HMMatrix)
+  
 }
 
 print(spreadMatrix)
