@@ -37,9 +37,12 @@ colnames(spreadMatrix) <- c("Yes","SAFE","No")
 plotdataHIT <- 0
 plotdataMIS <- 0
 
+successMatrix <- matrix(data=0, ncol= 8, nrow = 3)
+colnames(successMatrix) <- c("Control","ATR","BBands","Chaikin","%Change(5)","%Change(10)","Schwager","VR2")
+#rownames(successMatrix) <- C("Hit", "Miss", "HITPercent")
 
 
-for (i in 1:10){
+for (i in 6:6){
   plotdataHIT <- 0
   plotdataHIT2 <- 0
   plotdataMIS <- 0
@@ -113,6 +116,7 @@ for (i in 1:10){
   
   upcount <- 0 ; eqcount <- 0 ; dncount <- 0
   for (c in 20:len) { #FOR THE FIRST 20 days to the end
+    
     yesterdaySpread = high[c-1] - close[c-1]
     HalfSpread <- yesterdaySpread/10
     
@@ -413,6 +417,130 @@ for (i in 1:10){
     # if (as.integer(series$Low[c-1]) > as.integer(series$Low[c])) {dncount <- dncount+1}
     # if (as.integer(series$Low[c-1]) == as.integer(series$Low[c])) {eqcount <- eqcount+1}
     
+    
+    ###ACCESS THE CORRECT VALUES PER VOLATILITY INDEX
+    
+    #print(atr[c-1])
+    plottingATRHITTER <- (atr[c-1] / close[c-1]) * 100
+    YestATR <- as.double(plottingATRHITTER)
+    
+    YestChaikin <- as.double(chaikin[c-1])
+    
+    YestVR <- as.double(vr[c-1])
+    
+    YestVR2 <- as.double(vr2[c-1])
+    
+    PerChange.5 <- ((as.double(close[c-1]) - as.double(close[c-5])) / as.double(close[c-5])) * 100 
+    YestChange5 <- as.double(PerChange.5)
+    
+    PerChange.10 <- ((as.double(close[c-1]) - as.double(close[c-10])) / as.double(close[c-10])) * 100 
+    YestChange10 <- as.double(PerChange.10)
+    
+    bband <- bbands[c-1]
+    bband <- bband[,"bndWidth"]
+    YestBBand <- as.double(bband)
+    
+    TestValue <- close[c-1]
+    SKIPVALUE <- 999999999
+    
+    
+    LoAtrVal <- 0
+    UpAtrVal <- 1
+    LoBBandVal <- SKIPVALUE
+    UpBBandVal <- SKIPVALUE
+    LoChaikinVal <- -0.2
+    UpChaikinVal <- 0.2
+    Lo5DayVal <- SKIPVALUE
+    Up5DayVal <- SKIPVALUE
+    Lo10DayVal <- SKIPVALUE
+    Up10DayVal <- SKIPVALUE
+    LoSchwagerVal <- SKIPVALUE
+    UpSchwagerVal <- SKIPVALUE
+    LoVR2Val <- SKIPVALUE
+    UpVR2Val <- SKIPVALUE
+    
+    
+    
+    if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+      successMatrix[1,"Control"] <- successMatrix[1,"Control"] + 1
+    } else {
+      successMatrix[2,"Control"] <- successMatrix[2,"Control"] + 1
+    }
+    
+    if ((YestATR >= LoAtrVal) && (YestATR <= UpAtrVal)){
+      if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+        successMatrix[1,"ATR"] <- successMatrix[1,"ATR"] + 1
+      } else {
+        successMatrix[2,"ATR"] <- successMatrix[2,"ATR"] + 1
+      }
+    }
+    
+    if ((YestBBand >= LoBBandVal) && (YestBBand <= UpBBandVal)){
+      if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+        successMatrix[1,"BBands"] <- successMatrix[1,"BBands"] + 1
+      } else {
+        successMatrix[2,"BBands"] <- successMatrix[2,"BBands"] + 1
+      }
+    }
+
+    if (c-1 == 19) {
+      #FIRST VALUE IS NA FOR SOME REASON JUST SKIP THIS ONE
+    } else { 
+      if ((YestChaikin >= LoChaikinVal) && (YestChaikin <= UpChaikinVal)){
+        if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+          successMatrix[1,"Chaikin"] <- successMatrix[1,"Chaikin"] + 1
+        } else {
+          successMatrix[2,"Chaikin"] <- successMatrix[2,"Chaikin"] + 1
+        }
+      }
+    }
+    
+    if ((YestChange5 >= Lo5DayVal) && (YestChange5 <= Up5DayVal)){
+      if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+        successMatrix[1,"%Change(5)"] <- successMatrix[1,"%Change(5)"] + 1
+      } else {
+        successMatrix[2,"%Change(5)"] <- successMatrix[2,"%Change(5)"] + 1
+      }
+    }
+    
+    if ((YestChange10 >= Lo10DayVal) && (YestChange10 <= Up10DayVal)){
+      if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+        successMatrix[1,"%Change(10)"] <- successMatrix[1,"%Change(10)"] + 1
+      } else {
+        successMatrix[2,"%Change(10)"] <- successMatrix[2,"%Change(10)"] + 1
+      }
+    }
+    
+    if ((YestVR >= LoSchwagerVal) && (YestVR <= UpSchwagerVal)){
+      if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+        successMatrix[1,"Schwager"] <- successMatrix[1,"Schwager"] + 1
+      } else {
+        successMatrix[2,"Schwager"] <- successMatrix[2,"Schwager"] + 1
+      }
+    }
+    
+    if ((YestVR2 >= LoVR2Val) && (YestVR2 <= UpVR2Val)){
+      if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+        successMatrix[1,"VR2"] <- successMatrix[1,"VR2"] + 1
+      } else {
+        successMatrix[2,"VR2"] <- successMatrix[2,"VR2"] + 1
+      }
+    }
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
+    
   }
   spreadMatrix <- rbind(spreadMatrix, c(upcount,eqcount,dncount))
   
@@ -527,18 +655,38 @@ for (i in 1:10){
   print(paste("-------- SERIES ",i," --------"))
   print(HMMatrix)
   
-  dev.copy(pdf,file=paste('/Users/alexe/OneDrive/Desktop/backtester_v5.5 (1)/backtester_v5.5/plots/Market Making/Volatility Plots/chaikin/Attempt2StackedPercentage',i,'.pdf') ,
-           width = 10, # The width of the plot in inches
-            height = 10) # The height of the plot in inches
+  #dev.copy(pdf,file=paste('/Users/alexe/OneDrive/Desktop/backtester_v5.5 (1)/backtester_v5.5/plots/Market Making/Volatility Plots/chaikin/Attempt2StackedPercentage',i,'.pdf') ,
+  #         width = 10, # The width of the plot in inches
+  #          height = 10) # The height of the plot in inches
   StackedChart <-  paste("Series", i, " - ", "Indicator: Chaikin","      (Blue = Hit / Red = Miss)")
   barplot(main=StackedChart,data_percentage, col=coul , border="white", xlab="Volatility Values (LessThan or EqualTo)", ylab="Percentage (%)")
   
-  dev.off()
+  #dev.off()
   #addtable2plot(table=HMMatrix)
   
 }
 
 print(spreadMatrix)
+
+rownames(successMatrix) <- c("Hit", "Miss", "Hit%")
+
+for (i in 1:8){
+  successMatrix[3,i] <- (successMatrix[1,i] / (successMatrix[1,i] + successMatrix[2,i])) * 100
+}
+
+print(successMatrix)
+print(paste("CONTROL ","|","ATR: ",LoAtrVal,":",UpAtrVal,"|","BBands: ",LoBBandVal,":",UpBBandVal,"|", "Chaikin: ",LoChaikinVal,":",UpChaikinVal,"|",
+            "%change(5): ",Lo5DayVal,":",Up5DayVal,"|","%Change(10): ",Lo10DayVal,":",Up10DayVal,"|","Schwager: ",LoSchwagerVal,":",UpSchwagerVal,"|",
+            "VR2: ",LoVR2Val,":",UpVR2Val,"|"))
+
+
+
+
+
+
+
+
+
 #print(rep(1:length(plotdataHIT)))
 #if(length(plotdataHIT) %% 10 != 0){
 #  toAdd <- length(plotdataHIT) %% 10
@@ -667,17 +815,21 @@ colnames(clInSingleXts) <- 1:10
 
 #print(clInSingleXts)
 
-q <- ggplot(fortify.zoo((diff(clInSingleXts)/clInSingleXts)*100,melt=TRUE),aes(x= Value, fill = Series))
-#q <- ggplot(fortify.zoo(diff(clInSingleXts),melt=TRUE),aes(x= Value, fill = Series))
-#q <- ggplot(fortify.zoo(diff(hiInSingleXts),melt=TRUE),aes(x= Value, fill = Series))
-q <- q + geom_bar(stat='bin', binwidth = 1)
-#q <- q + labs(title= "The Low Differences")
-#q <- q + xlab("Date")
-q <- q + facet_wrap (~ Series, ncol = 5)
-q <- q + coord_flip(xlim=c(-2.5,2.5))
-q <- q + labs(title = "Low % Change - (binwidth = 0.222%)", fontface="bold")
-#q <- q + facet_free()
-#plot(q)
+# 
+# # 
+# # # 
+# # # # q <- ggplot(fortify.zoo((diff(clInSingleXts)/clInSingleXts)*100,melt=TRUE),aes(x= Value, fill = Series))
+# # # # #q <- ggplot(fortify.zoo(diff(clInSingleXts),melt=TRUE),aes(x= Value, fill = Series))
+# # # # #q <- ggplot(fortify.zoo(diff(hiInSingleXts),melt=TRUE),aes(x= Value, fill = Series))
+# # # # q <- q + geom_bar(stat='bin', binwidth = 1)
+# # # # #q <- q + labs(title= "The Low Differences")
+# # # # #q <- q + xlab("Date")
+# # # # q <- q + facet_wrap (~ Series, ncol = 5)
+# # # # q <- q + coord_flip(xlim=c(-2.5,2.5))
+# # # # q <- q + labs(title = "Low % Change - (binwidth = 0.222%)", fontface="bold")
+# # # # #q <- q + facet_free()
+# # # # #plot(q)
+# # # 
 
 # justLoList <- lapply(dataList[1:10], function(x) x$Low)
 # loInSingleXts <- do.call(cbind, justLoList)
