@@ -252,7 +252,7 @@ for (i in 1:10){
       #plottingATRHITTER <- (atr[c-1] / close[c-1]) * 100
       #plotdataHIT <- rbind(plotdataHIT, as.double(plottingATRHITTER))
       
-      #plotdataHIT <- rbind(plotdataHIT, as.double(chaikin[c-1]))
+      plotdataHIT <- rbind(plotdataHIT, as.double(chaikin[c-1]))
       
       #plotdataHIT <- rbind(plotdataHIT, as.double(vr[c-1]))
       
@@ -261,11 +261,11 @@ for (i in 1:10){
       #PerChange.5 <- ((as.double(close[c-1]) - as.double(close[c-5])) / as.double(close[c-5])) * 100 
       #plotdataHIT <- rbind(plotdataHIT, as.double(PerChange.5))
       #PerChange.10 <- ((as.double(close[c-1]) - as.double(close[c-10])) / as.double(close[c-10])) * 100 
-      #plotdataHIT2 <- rbind(plotdataHIT2, as.double(PerChange.10))
+      #plotdataHIT <- rbind(plotdataHIT, as.double(PerChange.10))
       
-      bband <- bbands[c-1]
-      bband <- bband[,"bndWidth"]
-      plotdataHIT <- rbind(plotdataHIT, as.double(bband))
+      #bband <- bbands[c-1]
+      #bband <- bband[,"bndWidth"]
+      #plotdataHIT <- rbind(plotdataHIT, as.double(bband))
       
     } else {
       dncount <- dncount+1
@@ -273,7 +273,7 @@ for (i in 1:10){
       #plottingATRMISS <- (atr[c-1] / close[c-1]) * 100
       #plotdataMIS <- rbind(plotdataMIS, as.double(plottingATRMISS))
       
-      #plotdataMIS <- rbind(plotdataMIS, as.double(chaikin[c-1]))
+      plotdataMIS <- rbind(plotdataMIS, as.double(chaikin[c-1]))
       
       #plotdataMIS <- rbind(plotdataMIS, as.double(vr[c-1]))
       
@@ -282,11 +282,11 @@ for (i in 1:10){
       #PerChange.5 <- ((as.double(close[c-1]) - as.double(close[c-5])) / as.double(close[c-5])) * 100 
       #plotdataMIS <- rbind(plotdataMIS, as.double(PerChange.5))
       #PerChange.10 <- ((as.double(close[c-1]) - as.double(close[c-10])) / as.double(close[c-10])) * 100 
-      #plotdataMIS2 <- rbind(plotdataMIS2, as.double(PerChange.10))
+      #plotdataMIS <- rbind(plotdataMIS, as.double(PerChange.10))
       
-      bband <- bbands[c-1]
-      bband <- bband[,"bndWidth"]
-      plotdataMIS <- rbind(plotdataMIS, as.double(bband))
+      #bband <- bbands[c-1]
+      #bband <- bband[,"bndWidth"]
+      #plotdataMIS <- rbind(plotdataMIS, as.double(bband))
       
       
       
@@ -457,45 +457,63 @@ for (i in 1:10){
   #print(minVAL)
   #print(maxVAL)
   
-  #Floor and Ceiling the valies
+  #Floor and Ceiling the values
+  
+#NEED TO FLOOR TO ONE DECIMAL PLACE!
   minBin <- floor(minVAL)
   maxBin <- ceiling(maxVAL)
   
+  #print(minVAL)
   #print(minBin)
+  #print(maxVAL)
   #print(maxBin)
+  
   binWidth <- 0.1
   range <- maxBin - minBin
+  #print(range)
   totalBins <- range / binWidth
   #print(totalBins)
   
   #vgspreadMatrix <- matrix(ncol= 1, nrow = 0)
   HMMatrix <- matrix(data=0,nrow=2,ncol=totalBins)
+  colnames(HMMatrix) <- as.character(seq(from=minBin, to=maxBin-binWidth, by=binWidth))
+  rownames(HMMatrix) <- c("Hit", "Miss")
   #print(HMMatrix)
   
+  #FOR LOOP FROM LOW VALUE TO TOP VALUE BY BIN SIZE
+  
+  ####for(i in seq(from=, to=, by=)){}        HOW TO HANDLE NEGATIVESSSS
+  
   for (hitLoop in 1:length(plotdataHIT))  {
-    for (counter in 1:totalBins) {
+    for(counter in seq(from=minBin, to=maxBin-binWidth, by=binWidth)){
+      #print(counter)
+    #for (counter in 1:totalBins) {
       x <- plotdataHIT[hitLoop]
-      if((x > binWidth*(counter-1) && x < binWidth*(counter))){
-        #print(paste("bindwith is: ", binWidth*(counter-1), " to ", binWidth*(counter)))
-        HMMatrix[1,counter] <- HMMatrix[1,counter] + 1
+      #print(paste("bindwith is: ", counter, " to ", counter+binWidth))
+      #if((x > binWidth*(counter-1) && x < (binWidth*counter))){
+      if ((x > counter) && (x <= (counter+binWidth))){
+        #print(as.character(counter))
+        HMMatrix[1,as.character(counter)] <- HMMatrix[1,as.character(counter)] + 1
+        #print(HMMatrix[1,as.character(counter)])
       }
     }
   }
+  
   for (misLoop in 1:length(plotdataMIS))  {
-    for (counter in 1:totalBins) {
+    for(counter in seq(from=minBin, to=maxBin-binWidth, by=binWidth)){
       x <- plotdataMIS[misLoop]
-      if((binWidth*(counter-1) < x && x <= binWidth*(counter))){
+      if ((x > counter) && (x <= (counter+binWidth))){
+        #print(as.character(counter))
         #print(paste("bindwith is: ", binWidth*(counter-1), " to ", binWidth*(counter)))
-        HMMatrix[2,counter] <- HMMatrix[2,counter] + 1
+        HMMatrix[2,as.character(counter)] <- HMMatrix[2,as.character(counter)] + 1
       }
     }
   }
+  
   #print(length(plotdataHIT))
   #print(length(plotdataMIS))
   
   #HMMatrix
-  colnames(HMMatrix) <- as.character(seq(from=minBin+binWidth, to=maxBin, by=binWidth))
-  rownames(HMMatrix) <- c("Hit", "Miss")
   
   library(RColorBrewer)
 
@@ -509,11 +527,12 @@ for (i in 1:10){
   print(paste("-------- SERIES ",i," --------"))
   print(HMMatrix)
   
-  dev.copy(pdf,file=paste('/Users/alexe/OneDrive/Desktop/backtester_v5.5 (1)/backtester_v5.5/plots/Market Making/Volatility Plots/bbandwidth/StackedPercentage',i,'.pdf') ,
+  dev.copy(pdf,file=paste('/Users/alexe/OneDrive/Desktop/backtester_v5.5 (1)/backtester_v5.5/plots/Market Making/Volatility Plots/chaikin/Attempt2StackedPercentage',i,'.pdf') ,
            width = 10, # The width of the plot in inches
             height = 10) # The height of the plot in inches
-  StackedChart <-  paste("Series", i, " - ", "Indicator: BBandWidth","      (Blue = Hit / Red = Miss)")
+  StackedChart <-  paste("Series", i, " - ", "Indicator: Chaikin","      (Blue = Hit / Red = Miss)")
   barplot(main=StackedChart,data_percentage, col=coul , border="white", xlab="Volatility Values (LessThan or EqualTo)", ylab="Percentage (%)")
+  
   dev.off()
   #addtable2plot(table=HMMatrix)
   
