@@ -39,10 +39,13 @@ plotdataMIS <- 0
 
 successMatrix <- matrix(data=0, ncol= 8, nrow = 3)
 colnames(successMatrix) <- c("Control","ATR","BBands","Chaikin","%Change(5)","%Change(10)","Schwager","VR2")
+
+spreadsizerMatrix <- matrix(data=0, ncol= 6, nrow = 3)
+colnames(spreadsizerMatrix) <- c("0","0.001","0.002","0.003","0.004","0.005")
 #rownames(successMatrix) <- C("Hit", "Miss", "HITPercent")
 
 
-for (i in 1:1){
+for (i in 3:3){
   plotdataHIT <- 0
   plotdataHIT2 <- 0
   plotdataMIS <- 0
@@ -87,6 +90,7 @@ for (i in 1:1){
   
   chaikin <- chaikinVolatility(HL)
   chaikin <- chaikin[[1]]
+  print(chaikin)
   
   bbands <- (BBands(close,n=14,sd=1))
   BW <- ((bbands[,"up"] - bbands[,"dn"])/bbands[,"mavg"])*100
@@ -254,7 +258,9 @@ for (i in 1:1){
     
       
       #print(atr[c-1])
+      #print(close[c-1])
       plottingATRHITTER <- (atr[c-1] / close[c-1]) * 100
+      #print(plottingATRHITTER)
       plotdataHIT <- rbind(plotdataHIT, as.double(plottingATRHITTER))
       
       #plotdataHIT <- rbind(plotdataHIT, as.double(chaikin[c-1]))
@@ -426,9 +432,11 @@ for (i in 1:1){
     
     
     ###ACCESS THE CORRECT VALUES PER VOLATILITY INDEX
-    
+    #print("-----------------")
     #print(atr[c-1])
+    #print(close[c-1])
     plottingATRHITTER <- (atr[c-1] / close[c-1]) * 100
+    #print(plottingATRHITTER)
     YestATR <- as.double(plottingATRHITTER)
     
     YestChaikin <- as.double(chaikin[c-1])
@@ -451,26 +459,215 @@ for (i in 1:1){
     SKIPVALUE <- 999999999
     
     
-    LoAtrVal <- SKIPVALUE
-    UpAtrVal <- SKIPVALUE
+    # LoAtrVal <- 0
+    # UpAtrVal <- 1.5
+    # LoBBandVal <- 0
+    # UpBBandVal <- 2.4
+    # LoChaikinVal <- -0.4
+    # UpChaikinVal <- 0.5
+    # Lo5DayVal <- SKIPVALUE
+    # Up5DayVal <- SKIPVALUE
+    # Lo10DayVal <- SKIPVALUE
+    # Up10DayVal <- SKIPVALUE
+    # LoSchwagerVal <- 0.5
+    # UpSchwagerVal <- 1.7
+    # LoVR2Val <- 0.6
+    # UpVR2Val <- 1.3
+    # 
+    # 
+    # 
+    # 
+    # 
+    # #FIX ONE VOLATILITY TO LOOK FOR COMBINATIONS!
+    # FIXEDatr <- (atr[c-1] / close[c-1]) * 100
+    # FIXEDatr <- as.double(FIXEDatr)
+    # 
+    # FIXEDchaikin <- as.double(chaikin[c-1])
+    # 
+    # FIXEDvr <-  as.double(vr[c-1])
+    # 
+    # FIXEDvr2 <- as.double(vr2[c-1])
+    # 
+    # FIXEDPerChange.5 <- ((as.double(close[c-1]) - as.double(close[c-5])) / as.double(close[c-5])) * 100 
+    # FIXEDPerChange.5 <- as.double(PerChange.5)
+    # FIXEDPerChange.10 <- ((as.double(close[c-1]) - as.double(close[c-10])) / as.double(close[c-10])) * 100 
+    # FIXEDPerChange.10 <- as.double(PerChange.10)
+    # 
+    # FIXEDbband <- bbands[c-1]
+    # FIXEDbband <- bband[,"bndWidth"]
+    # FIXEDbband <- as.double(bband)
+    # 
+    # # print("--------Up--------")
+    # # print(FIXEDatr)
+    # # print(FIXEDchaikin)
+    # # print(FIXEDvr)
+    # # print(FIXEDvr2)
+    # # print(FIXEDPerChange.5)
+    # # print(FIXEDPerChange.10)
+    # # print(FIXEDbband)
+    # # print("--------Dn--------")
+    # 
+    # #if ((FIXEDvr > 0.9) && (FIXEDvr <= 1.5) && (c-1 != 19) ){    ###SET ONE and see how the others perform, with the combination of multiple volatility indicaotrs...
+    #   #if ((FIXEDbband > 0) && (FIXEDbband <= 2.4) && (c-1 != 19)){
+    #     #if ((FIXEDchaikin > -0.1) && (FIXEDchaikin <= 0.4) && (c-1 != 19)){
+    #     
+    #     
+    #     
+    #     
+    #   # if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+    #   #   successMatrix[1,"Control"] <- successMatrix[1,"Control"] + 1
+    #   # } else {
+    #   #   successMatrix[2,"Control"] <- successMatrix[2,"Control"] + 1
+    #   # }
+    #   # 
+    #   # if ((YestATR > LoAtrVal) && (YestATR <= UpAtrVal)){
+    #   #   if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+    #   #     successMatrix[1,"ATR"] <- successMatrix[1,"ATR"] + 1
+    #   #   } else {
+    #   #     successMatrix[2,"ATR"] <- successMatrix[2,"ATR"] + 1
+    #   #   }
+    #   # }
+    #   # 
+    #   # if ((YestBBand > LoBBandVal) && (YestBBand <= UpBBandVal)){
+    #   #   if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+    #   #     successMatrix[1,"BBands"] <- successMatrix[1,"BBands"] + 1
+    #   #   } else {
+    #   #     successMatrix[2,"BBands"] <- successMatrix[2,"BBands"] + 1
+    #   #   }
+    #   # }
+    #   # 
+    #   # if (c-1 == 19) {
+    #   #   #FIRST VALUE IS NA FOR SOME REASON JUST SKIP THIS ONE
+    #   # } else {
+    #   #   if ((YestChaikin > LoChaikinVal) && (YestChaikin <= UpChaikinVal)){
+    #   #     if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+    #   #       successMatrix[1,"Chaikin"] <- successMatrix[1,"Chaikin"] + 1
+    #   #     } else {
+    #   #       successMatrix[2,"Chaikin"] <- successMatrix[2,"Chaikin"] + 1
+    #   #     }
+    #   #   }
+    #   # }
+    #   # 
+    #   # if ((YestChange5 > Lo5DayVal) && (YestChange5 <= Up5DayVal)){
+    #   #   if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+    #   #     successMatrix[1,"%Change(5)"] <- successMatrix[1,"%Change(5)"] + 1
+    #   #   } else {
+    #   #     successMatrix[2,"%Change(5)"] <- successMatrix[2,"%Change(5)"] + 1
+    #   #   }
+    #   # }
+    #   # 
+    #   # if ((YestChange10 > Lo10DayVal) && (YestChange10 <= Up10DayVal)){
+    #   #   if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+    #   #     successMatrix[1,"%Change(10)"] <- successMatrix[1,"%Change(10)"] + 1
+    #   #   } else {
+    #   #     successMatrix[2,"%Change(10)"] <- successMatrix[2,"%Change(10)"] + 1
+    #   #   }
+    #   # }
+    #   # 
+    #   # if ((YestVR > LoSchwagerVal) && (YestVR <= UpSchwagerVal)){
+    #   #   if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+    #   #     successMatrix[1,"Schwager"] <- successMatrix[1,"Schwager"] + 1
+    #   #   } else {
+    #   #     successMatrix[2,"Schwager"] <- successMatrix[2,"Schwager"] + 1
+    #   #   }
+    #   # }
+    #   # 
+    #   # if ((YestVR2 > LoVR2Val) && (YestVR2 <= UpVR2Val)){
+    #   #   if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+    #   #     successMatrix[1,"VR2"] <- successMatrix[1,"VR2"] + 1
+    #   #   } else {
+    #   #     successMatrix[2,"VR2"] <- successMatrix[2,"VR2"] + 1
+    #   #   }
+    #   # }
+    # 
+    #     #}
+    #   
+    #  #}
+    # #}
+    
+    
+    #SERIES 3
+    # LoAtrVal <- 0
+    # UpAtrVal <- 1.5
+    # LoBBandVal <- 0
+    # UpBBandVal <- 2.4
+    # LoChaikinVal <- -0.4
+    # UpChaikinVal <- 0.5
+    # Lo5DayVal <- SKIPVALUE
+    # Up5DayVal <- SKIPVALUE
+    # Lo10DayVal <- SKIPVALUE
+    # Up10DayVal <- SKIPVALUE
+    # LoSchwagerVal <- 0.5
+    # UpSchwagerVal <- 1.7
+    # LoVR2Val <- 0.6
+    # UpVR2Val <- 1.3
+    
+    #SERIES 4
+    # LoAtrVal <- 0
+    # UpAtrVal <- 1.8
+    # LoBBandVal <- 0.6
+    # UpBBandVal <- 1.6
+    # LoChaikinVal <- -0.3
+    # UpChaikinVal <- 0.3
+    # Lo5DayVal <- -0.2
+    # Up5DayVal <- 0.9
+    # Lo10DayVal <- SKIPVALUE
+    # Up10DayVal <- SKIPVALUE
+    # LoSchwagerVal <- 0.6
+    # UpSchwagerVal <- 1.5
+    # LoVR2Val <- 0.6
+    # UpVR2Val <- 1.5
+    
+    # SERIES 5
+    # LoAtrVal <- 0.2
+    # UpAtrVal <- 0.7
+    # LoBBandVal <- 0.2
+    # UpBBandVal <- 1.1
+    # LoChaikinVal <- -0.3
+    # UpChaikinVal <- 0.2
+    # Lo5DayVal <- SKIPVALUE
+    # Up5DayVal <- SKIPVALUE
+    # Lo10DayVal <- SKIPVALUE
+    # Up10DayVal <- SKIPVALUE
+    # LoSchwagerVal <- 0.9
+    # UpSchwagerVal <- 1.5
+    # LoVR2Val <- SKIPVALUE
+    # UpVR2Val <- SKIPVALUE
+    
+    # #SERIES 6
+    # LoAtrVal <- 0
+    # UpAtrVal <- 1.1
+    # LoBBandVal <- 1.1
+    # UpBBandVal <- 2
+    # LoChaikinVal <- -0.2
+    # UpChaikinVal <- 0.2
+    # Lo5DayVal <- SKIPVALUE
+    # Up5DayVal <- SKIPVALUE
+    # Lo10DayVal <- SKIPVALUE
+    # Up10DayVal <- SKIPVALUE
+    # LoSchwagerVal <- 0.6
+    # UpSchwagerVal <- 1.1
+    # LoVR2Val <- 0.9
+    # UpVR2Val <- 1.3
+    
+    #SERIES 7
+    LoAtrVal <- 1
+    UpAtrVal <- 1.8
     LoBBandVal <- SKIPVALUE
     UpBBandVal <- SKIPVALUE
-    LoChaikinVal <- -0.3
-    UpChaikinVal <- 0.2
+    LoChaikinVal <- -0.1
+    UpChaikinVal <- 0.4
     Lo5DayVal <- SKIPVALUE
     Up5DayVal <- SKIPVALUE
     Lo10DayVal <- SKIPVALUE
     Up10DayVal <- SKIPVALUE
-    LoSchwagerVal <- 0.7
-    UpSchwagerVal <- 1.4
-    LoVR2Val <- 0.8
-    UpVR2Val <- 1.3
+    LoSchwagerVal <- SKIPVALUE
+    UpSchwagerVal <- SKIPVALUE
+    LoVR2Val <- 0.7
+    UpVR2Val <- 1.5
     
     
     
-    
-    
-    #FIX ONE VOLATILITY TO LOOK FOR COMBINATIONS!
     FIXEDatr <- (atr[c-1] / close[c-1]) * 100
     FIXEDatr <- as.double(FIXEDatr)
     
@@ -489,94 +686,91 @@ for (i in 1:1){
     FIXEDbband <- bband[,"bndWidth"]
     FIXEDbband <- as.double(bband)
     
-    # print("--------Up--------")
-    # print(FIXEDatr)
-    # print(FIXEDchaikin)
-    # print(FIXEDvr)
-    # print(FIXEDvr2)
-    # print(FIXEDPerChange.5)
-    # print(FIXEDPerChange.10)
-    # print(FIXEDbband)
-    # print("--------Dn--------")
     
-    if ((FIXEDvr2 > 0.8) && (FIXEDvr2 <= 1.3) && (c-1 != 19)){    ###SET ONE and see how the others perform, with the combination of multiple volatility indicaotrs...
+    #IF ALL MY INDICAOTRS TELL ME TO ENTER ON THIS DAY
+    TestValuedn <- close[c-1]
+    TestValueup <- close[c-1]
+    #print(atr[c-1])
     
+    spreadVal1 <- (atr[c-1]/2) * 0.1
+    spreadVal2 <- (atr[c-1]/2) * 0.2
+    spreadVal3 <- (atr[c-1]/2) * 0.3
+    spreadVal4 <- (atr[c-1]/2) * 0.4
+    spreadVal5 <- (atr[c-1]/2) * 0.5
+    # spreadVal1 <- close[c-1] * 0.001
+    # spreadVal2 <- close[c-1] * 0.002
+    # spreadVal3 <- close[c-1] * 0.003
+    # spreadVal4 <- close[c-1] * 0.004
+    # spreadVal5 <- close[c-1] * 0.005
     
+    spreadVal1UP <- (atr[c-1]/2) * 0.1
+    spreadVal2UP <- (atr[c-1]/2) * 0.2  
+    spreadVal3UP <- (atr[c-1]/2) * 0.3
+    spreadVal4UP <- (atr[c-1]/2) * 0.4
+    spreadVal5UP <- (atr[c-1]/2) * 0.5
+    # spreadVal1UP <- close[c-1] * 0.001
+    # spreadVal2UP <- close[c-1] * 0.002  
+    # spreadVal3UP <- close[c-1] * 0.003
+    # spreadVal4UP <- close[c-1] * 0.004
+    # spreadVal5UP <- close[c-1] * 0.005
     
-      if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-        successMatrix[1,"Control"] <- successMatrix[1,"Control"] + 1
-      } else {
-        successMatrix[2,"Control"] <- successMatrix[2,"Control"] + 1
-      }
-  
-      if ((YestATR > LoAtrVal) && (YestATR <= UpAtrVal)){
-        if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-          successMatrix[1,"ATR"] <- successMatrix[1,"ATR"] + 1
-        } else {
-          successMatrix[2,"ATR"] <- successMatrix[2,"ATR"] + 1
-        }
-      }
-  
-      if ((YestBBand > LoBBandVal) && (YestBBand <= UpBBandVal)){
-        if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-          successMatrix[1,"BBands"] <- successMatrix[1,"BBands"] + 1
-        } else {
-          successMatrix[2,"BBands"] <- successMatrix[2,"BBands"] + 1
-        }
-      }
-  
-      if (c-1 == 19) {
-        #FIRST VALUE IS NA FOR SOME REASON JUST SKIP THIS ONE
-      } else {
-        if ((YestChaikin > LoChaikinVal) && (YestChaikin <= UpChaikinVal)){
-          if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-            successMatrix[1,"Chaikin"] <- successMatrix[1,"Chaikin"] + 1
+    #print("-----------")
+    #print(spreadVal1) * 2
+    #print(close[c-1] * 0.001)
+    
+    if ((FIXEDatr > LoAtrVal) && (FIXEDatr <= UpAtrVal)){    ###SET ONE and see how the others perform, with the combination of multiple volatility indicaotrs...
+      #if ((FIXEDbband > LoBBandVal) && (FIXEDbband <= UpBBandVal)){
+        if ((FIXEDchaikin > LoChaikinVal) && (FIXEDchaikin <= UpChaikinVal) && (c-1 != 19)){
+          #if ((FIXEDPerChange.5 > Lo5DayVal) && (FIXEDPerChange.5 <= Up5DayVal)){
+            #if ((FIXEDPerChange.10 > Lo10DayVal) && (FIXEDPerChange.10 <= Up10DayVal)){
+              #if ((FIXEDvr > LoSchwagerVal) && (FIXEDvr <= UpSchwagerVal)){
+                #if ((FIXEDvr2 > LoVR2Val) && (FIXEDvr2 <= UpVR2Val)){
+          
+          if ((as.double(TestValuedn) > as.double(low[c])) && (as.double(TestValueup) < as.double(high[c]))) {
+            spreadsizerMatrix[1,"0"] <- spreadsizerMatrix[1,"0"] + 1
           } else {
-            successMatrix[2,"Chaikin"] <- successMatrix[2,"Chaikin"] + 1
+            spreadsizerMatrix[2,"0"] <- spreadsizerMatrix[2,"0"] + 1
           }
-        }
-      }
-  
-      if ((YestChange5 > Lo5DayVal) && (YestChange5 <= Up5DayVal)){
-        if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-          successMatrix[1,"%Change(5)"] <- successMatrix[1,"%Change(5)"] + 1
-        } else {
-          successMatrix[2,"%Change(5)"] <- successMatrix[2,"%Change(5)"] + 1
-        }
-      }
-  
-      if ((YestChange10 > Lo10DayVal) && (YestChange10 <= Up10DayVal)){
-        if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-          successMatrix[1,"%Change(10)"] <- successMatrix[1,"%Change(10)"] + 1
-        } else {
-          successMatrix[2,"%Change(10)"] <- successMatrix[2,"%Change(10)"] + 1
-        }
-      }
-  
-      if ((YestVR > LoSchwagerVal) && (YestVR <= UpSchwagerVal)){
-        if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-          successMatrix[1,"Schwager"] <- successMatrix[1,"Schwager"] + 1
-        } else {
-          successMatrix[2,"Schwager"] <- successMatrix[2,"Schwager"] + 1
-        }
-      }
-  
-      if ((YestVR2 > LoVR2Val) && (YestVR2 <= UpVR2Val)){
-        if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-          successMatrix[1,"VR2"] <- successMatrix[1,"VR2"] + 1
-        } else {
-          successMatrix[2,"VR2"] <- successMatrix[2,"VR2"] + 1
-        }
-      }
-    
-    
-  }
-    
-    
-    
-    
-    
-    
+          
+          if ((as.double(TestValuedn-spreadVal1) > as.double(low[c])) && (as.double(TestValueup+spreadVal1UP) < as.double(high[c]))) {
+            spreadsizerMatrix[1,"0.001"] <- spreadsizerMatrix[1,"0.001"] + 1
+          } else {
+            spreadsizerMatrix[2,"0.001"] <- spreadsizerMatrix[2,"0.001"] + 1
+          }
+          
+          if ((as.double(TestValuedn-spreadVal2) > as.double(low[c])) && (as.double(TestValueup+spreadVal2UP) < as.double(high[c]))) {
+            spreadsizerMatrix[1,"0.002"] <- spreadsizerMatrix[1,"0.002"] + 1
+          } else {
+            spreadsizerMatrix[2,"0.002"] <- spreadsizerMatrix[2,"0.002"] + 1
+          }
+          
+          if ((as.double(TestValuedn-spreadVal3) > as.double(low[c])) && (as.double(TestValueup+spreadVal3UP) < as.double(high[c]))) {
+            spreadsizerMatrix[1,"0.003"] <- spreadsizerMatrix[1,"0.003"] + 1
+          } else {
+            spreadsizerMatrix[2,"0.003"] <- spreadsizerMatrix[2,"0.003"] + 1
+          }
+          
+          if ((as.double(TestValuedn-spreadVal4) > as.double(low[c])) && (as.double(TestValueup+spreadVal4UP) < as.double(high[c]))) {
+            spreadsizerMatrix[1,"0.004"] <- spreadsizerMatrix[1,"0.004"] + 1
+          } else {
+            spreadsizerMatrix[2,"0.004"] <- spreadsizerMatrix[2,"0.004"] + 1
+          }
+          
+          if ((as.double(TestValuedn-spreadVal5) > as.double(low[c])) && (as.double(TestValueup+spreadVal5UP) < as.double(high[c]))) {
+            spreadsizerMatrix[1,"0.005"] <- spreadsizerMatrix[1,"0.005"] + 1
+          } else {
+            spreadsizerMatrix[2,"0.005"] <- spreadsizerMatrix[2,"0.005"] + 1
+          }
+          
+                }
+              }
+            #}
+          #}
+        #}
+      #}
+    #}
+          
+      
     
     
     
@@ -722,6 +916,14 @@ print(paste("CONTROL ","|","ATR: ",LoAtrVal,":",UpAtrVal,"|","BBands: ",LoBBandV
             "%change(5): ",Lo5DayVal,":",Up5DayVal,"|","%Change(10): ",Lo10DayVal,":",Up10DayVal,"|","Schwager: ",LoSchwagerVal,":",UpSchwagerVal,"|",
             "VR2: ",LoVR2Val,":",UpVR2Val,"|"))
 
+
+
+
+rownames(spreadsizerMatrix) <- c("Hit", "Miss", "Hit%")
+for (i in 1:6){
+  spreadsizerMatrix[3,i] <- (spreadsizerMatrix[1,i] / (spreadsizerMatrix[1,i] + spreadsizerMatrix[2,i])) * 100
+}
+print(spreadsizerMatrix)
 
 
 
