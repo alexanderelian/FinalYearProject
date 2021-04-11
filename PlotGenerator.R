@@ -42,7 +42,7 @@ colnames(successMatrix) <- c("Control","ATR","BBands","Chaikin","%Change(5)","%C
 #rownames(successMatrix) <- C("Hit", "Miss", "HITPercent")
 
 
-for (i in 6:6){
+for (i in 1:1){
   plotdataHIT <- 0
   plotdataHIT2 <- 0
   plotdataMIS <- 0
@@ -234,8 +234,9 @@ for (i in 6:6){
     
     
     TestValue <- close[c-1]
+    
     #How often was my prediction within todays spread?
-    if ((as.double(TestValue) >= as.double(low[c])) && (as.double(TestValue) <= as.double(high[c]))) {
+    if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
       upcount <- upcount+1
       #When i hit, check the volatility indicaots, and look for a pattern...
       #print("-----------------------")
@@ -253,10 +254,10 @@ for (i in 6:6){
     
       
       #print(atr[c-1])
-      #plottingATRHITTER <- (atr[c-1] / close[c-1]) * 100
-      #plotdataHIT <- rbind(plotdataHIT, as.double(plottingATRHITTER))
+      plottingATRHITTER <- (atr[c-1] / close[c-1]) * 100
+      plotdataHIT <- rbind(plotdataHIT, as.double(plottingATRHITTER))
       
-      plotdataHIT <- rbind(plotdataHIT, as.double(chaikin[c-1]))
+      #plotdataHIT <- rbind(plotdataHIT, as.double(chaikin[c-1]))
       
       #plotdataHIT <- rbind(plotdataHIT, as.double(vr[c-1]))
       
@@ -271,13 +272,17 @@ for (i in 6:6){
       #bband <- bband[,"bndWidth"]
       #plotdataHIT <- rbind(plotdataHIT, as.double(bband))
       
+      #if (as.double(bband) <= 0.1) {
+      #  print("bband")
+      #}
+      
     } else {
       dncount <- dncount+1
       
-      #plottingATRMISS <- (atr[c-1] / close[c-1]) * 100
-      #plotdataMIS <- rbind(plotdataMIS, as.double(plottingATRMISS))
+      plottingATRMISS <- (atr[c-1] / close[c-1]) * 100
+      plotdataMIS <- rbind(plotdataMIS, as.double(plottingATRMISS))
       
-      plotdataMIS <- rbind(plotdataMIS, as.double(chaikin[c-1]))
+      #plotdataMIS <- rbind(plotdataMIS, as.double(chaikin[c-1]))
       
       #plotdataMIS <- rbind(plotdataMIS, as.double(vr[c-1]))
       
@@ -292,7 +297,9 @@ for (i in 6:6){
       #bband <- bband[,"bndWidth"]
       #plotdataMIS <- rbind(plotdataMIS, as.double(bband))
       
-      
+      #if (as.double(bband) <= 0.1) {
+      #  print("bband")
+      #}
       
       
       
@@ -444,91 +451,126 @@ for (i in 6:6){
     SKIPVALUE <- 999999999
     
     
-    LoAtrVal <- 0
-    UpAtrVal <- 1
+    LoAtrVal <- SKIPVALUE
+    UpAtrVal <- SKIPVALUE
     LoBBandVal <- SKIPVALUE
     UpBBandVal <- SKIPVALUE
-    LoChaikinVal <- -0.2
+    LoChaikinVal <- -0.3
     UpChaikinVal <- 0.2
     Lo5DayVal <- SKIPVALUE
     Up5DayVal <- SKIPVALUE
     Lo10DayVal <- SKIPVALUE
     Up10DayVal <- SKIPVALUE
-    LoSchwagerVal <- SKIPVALUE
-    UpSchwagerVal <- SKIPVALUE
-    LoVR2Val <- SKIPVALUE
-    UpVR2Val <- SKIPVALUE
+    LoSchwagerVal <- 0.7
+    UpSchwagerVal <- 1.4
+    LoVR2Val <- 0.8
+    UpVR2Val <- 1.3
     
     
     
-    if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-      successMatrix[1,"Control"] <- successMatrix[1,"Control"] + 1
-    } else {
-      successMatrix[2,"Control"] <- successMatrix[2,"Control"] + 1
-    }
     
-    if ((YestATR >= LoAtrVal) && (YestATR <= UpAtrVal)){
+    
+    #FIX ONE VOLATILITY TO LOOK FOR COMBINATIONS!
+    FIXEDatr <- (atr[c-1] / close[c-1]) * 100
+    FIXEDatr <- as.double(FIXEDatr)
+    
+    FIXEDchaikin <- as.double(chaikin[c-1])
+    
+    FIXEDvr <-  as.double(vr[c-1])
+    
+    FIXEDvr2 <- as.double(vr2[c-1])
+    
+    FIXEDPerChange.5 <- ((as.double(close[c-1]) - as.double(close[c-5])) / as.double(close[c-5])) * 100 
+    FIXEDPerChange.5 <- as.double(PerChange.5)
+    FIXEDPerChange.10 <- ((as.double(close[c-1]) - as.double(close[c-10])) / as.double(close[c-10])) * 100 
+    FIXEDPerChange.10 <- as.double(PerChange.10)
+    
+    FIXEDbband <- bbands[c-1]
+    FIXEDbband <- bband[,"bndWidth"]
+    FIXEDbband <- as.double(bband)
+    
+    # print("--------Up--------")
+    # print(FIXEDatr)
+    # print(FIXEDchaikin)
+    # print(FIXEDvr)
+    # print(FIXEDvr2)
+    # print(FIXEDPerChange.5)
+    # print(FIXEDPerChange.10)
+    # print(FIXEDbband)
+    # print("--------Dn--------")
+    
+    if ((FIXEDvr2 > 0.8) && (FIXEDvr2 <= 1.3) && (c-1 != 19)){    ###SET ONE and see how the others perform, with the combination of multiple volatility indicaotrs...
+    
+    
+    
       if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-        successMatrix[1,"ATR"] <- successMatrix[1,"ATR"] + 1
+        successMatrix[1,"Control"] <- successMatrix[1,"Control"] + 1
       } else {
-        successMatrix[2,"ATR"] <- successMatrix[2,"ATR"] + 1
+        successMatrix[2,"Control"] <- successMatrix[2,"Control"] + 1
       }
-    }
-    
-    if ((YestBBand >= LoBBandVal) && (YestBBand <= UpBBandVal)){
-      if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-        successMatrix[1,"BBands"] <- successMatrix[1,"BBands"] + 1
-      } else {
-        successMatrix[2,"BBands"] <- successMatrix[2,"BBands"] + 1
-      }
-    }
-
-    if (c-1 == 19) {
-      #FIRST VALUE IS NA FOR SOME REASON JUST SKIP THIS ONE
-    } else { 
-      if ((YestChaikin >= LoChaikinVal) && (YestChaikin <= UpChaikinVal)){
+  
+      if ((YestATR > LoAtrVal) && (YestATR <= UpAtrVal)){
         if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-          successMatrix[1,"Chaikin"] <- successMatrix[1,"Chaikin"] + 1
+          successMatrix[1,"ATR"] <- successMatrix[1,"ATR"] + 1
         } else {
-          successMatrix[2,"Chaikin"] <- successMatrix[2,"Chaikin"] + 1
+          successMatrix[2,"ATR"] <- successMatrix[2,"ATR"] + 1
         }
       }
-    }
-    
-    if ((YestChange5 >= Lo5DayVal) && (YestChange5 <= Up5DayVal)){
-      if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-        successMatrix[1,"%Change(5)"] <- successMatrix[1,"%Change(5)"] + 1
-      } else {
-        successMatrix[2,"%Change(5)"] <- successMatrix[2,"%Change(5)"] + 1
+  
+      if ((YestBBand > LoBBandVal) && (YestBBand <= UpBBandVal)){
+        if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+          successMatrix[1,"BBands"] <- successMatrix[1,"BBands"] + 1
+        } else {
+          successMatrix[2,"BBands"] <- successMatrix[2,"BBands"] + 1
+        }
       }
-    }
-    
-    if ((YestChange10 >= Lo10DayVal) && (YestChange10 <= Up10DayVal)){
-      if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-        successMatrix[1,"%Change(10)"] <- successMatrix[1,"%Change(10)"] + 1
+  
+      if (c-1 == 19) {
+        #FIRST VALUE IS NA FOR SOME REASON JUST SKIP THIS ONE
       } else {
-        successMatrix[2,"%Change(10)"] <- successMatrix[2,"%Change(10)"] + 1
+        if ((YestChaikin > LoChaikinVal) && (YestChaikin <= UpChaikinVal)){
+          if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+            successMatrix[1,"Chaikin"] <- successMatrix[1,"Chaikin"] + 1
+          } else {
+            successMatrix[2,"Chaikin"] <- successMatrix[2,"Chaikin"] + 1
+          }
+        }
       }
-    }
-    
-    if ((YestVR >= LoSchwagerVal) && (YestVR <= UpSchwagerVal)){
-      if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-        successMatrix[1,"Schwager"] <- successMatrix[1,"Schwager"] + 1
-      } else {
-        successMatrix[2,"Schwager"] <- successMatrix[2,"Schwager"] + 1
+  
+      if ((YestChange5 > Lo5DayVal) && (YestChange5 <= Up5DayVal)){
+        if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+          successMatrix[1,"%Change(5)"] <- successMatrix[1,"%Change(5)"] + 1
+        } else {
+          successMatrix[2,"%Change(5)"] <- successMatrix[2,"%Change(5)"] + 1
+        }
       }
-    }
-    
-    if ((YestVR2 >= LoVR2Val) && (YestVR2 <= UpVR2Val)){
-      if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
-        successMatrix[1,"VR2"] <- successMatrix[1,"VR2"] + 1
-      } else {
-        successMatrix[2,"VR2"] <- successMatrix[2,"VR2"] + 1
+  
+      if ((YestChange10 > Lo10DayVal) && (YestChange10 <= Up10DayVal)){
+        if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+          successMatrix[1,"%Change(10)"] <- successMatrix[1,"%Change(10)"] + 1
+        } else {
+          successMatrix[2,"%Change(10)"] <- successMatrix[2,"%Change(10)"] + 1
+        }
       }
-    }
+  
+      if ((YestVR > LoSchwagerVal) && (YestVR <= UpSchwagerVal)){
+        if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+          successMatrix[1,"Schwager"] <- successMatrix[1,"Schwager"] + 1
+        } else {
+          successMatrix[2,"Schwager"] <- successMatrix[2,"Schwager"] + 1
+        }
+      }
+  
+      if ((YestVR2 > LoVR2Val) && (YestVR2 <= UpVR2Val)){
+        if ((as.double(TestValue) > as.double(low[c])) && (as.double(TestValue) < as.double(high[c]))) {
+          successMatrix[1,"VR2"] <- successMatrix[1,"VR2"] + 1
+        } else {
+          successMatrix[2,"VR2"] <- successMatrix[2,"VR2"] + 1
+        }
+      }
     
     
-    
+  }
     
     
     
@@ -589,6 +631,7 @@ for (i in 6:6){
   
 #NEED TO FLOOR TO ONE DECIMAL PLACE!
   minBin <- floor(minVAL)
+  #floor(*10)/10
   maxBin <- ceiling(maxVAL)
   
   #print(minVAL)
@@ -655,10 +698,10 @@ for (i in 6:6){
   print(paste("-------- SERIES ",i," --------"))
   print(HMMatrix)
   
-  #dev.copy(pdf,file=paste('/Users/alexe/OneDrive/Desktop/backtester_v5.5 (1)/backtester_v5.5/plots/Market Making/Volatility Plots/chaikin/Attempt2StackedPercentage',i,'.pdf') ,
+  #dev.copy(pdf,file=paste('/Users/alexe/OneDrive/Desktop/backtester_v5.5 (1)/backtester_v5.5/plots/Market Making/Volatility Plots/ATR/StackedPercentageGraph',i,'.pdf') ,
   #         width = 10, # The width of the plot in inches
   #          height = 10) # The height of the plot in inches
-  StackedChart <-  paste("Series", i, " - ", "Indicator: Chaikin","      (Blue = Hit / Red = Miss)")
+  StackedChart <-  paste("Series", i, " - ", "Indicator: ATR ","      (Blue = Hit / Red = Miss)")
   barplot(main=StackedChart,data_percentage, col=coul , border="white", xlab="Volatility Values (LessThan or EqualTo)", ylab="Percentage (%)")
   
   #dev.off()
