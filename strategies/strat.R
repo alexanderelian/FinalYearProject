@@ -18,7 +18,7 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   
   if (store$iter > params$lookback) {
     startIndex <-  store$iter - params$lookback
-    #for (i in 4:4) {  #One Series
+    #for (i in 3:3) {  #One Series
     for (i in 1:length(params$series)) {
       #MO - Momentum Strategy
       # x <- MomentumStrategy(store, newRowList, currentPos, info, params, i, startIndex)
@@ -31,19 +31,24 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
       # store <- x$store
       
       #MR - Mean Reversion Strategy
-      x <- MeanRevStrategy(store, newRowList, currentPos, info, params, i, startIndex) #(2)
-      position <- x$position
-      store <- x$store
+      # x <- MeanRevStrategy(store, newRowList, currentPos, info, params, i, startIndex) #(2)
+      # position <- x$position
+      # store <- x$store
       
       #MM - Market Making Strategy
-      # MM <- MarketMakingStrategy(store, newRowList, currentPos, info, params, i, startIndex)
-      # MM$MarketOrders[i]
-      # #MM$Mark
-      # position <- 0
-      # MMLO1[params$series[i]] <- MM$limitOrders1[i]
-      # MMLP1[params$series[i]] <- MM$limitPrices1[i]
-      # MMLO2[params$series[i]] <- MM$limitOrders2[i]
-      # MMLP2[params$series[i]] <- MM$limitPrices2[i]
+      MM <- MarketMakingStrategy(store, newRowList, currentPos, info, params, i, startIndex)
+      #MM$MarketOrders[i]
+      #MM$Mark
+      position <- 0
+      MMLO1[params$series[i]] <- MM$limitOrders1[i]
+      MMLP1[params$series[i]] <- MM$limitPrices1[i]
+      MMLO2[params$series[i]] <- MM$limitOrders2[i]
+      MMLP2[params$series[i]] <- MM$limitPrices2[i]
+      
+      # MMLO1 <- MM$limitOrders1      #LIST IS COMPLETED AND AMMENDED, SO AT THE END OF THE 10, THE FULL LIST IS RETRUNED WITH WHAT POSITIONS I WANT
+      # MMLP1 <- MM$limitPrices1
+      # MMLO2 <- MM$limitOrders2
+      # MMLP2 <- MM$limitPrices2
 
       
       if (position != 0){
@@ -66,7 +71,44 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   limitOrders2 <- MMLO2
   limitPrices2 <- MMLP2
   
-  #print(marketOrders)
+  blankList <- c(0,0,0,0,0,0,0,0,0,0)
+  #print("-----------")
+  #print(limitOrders1)
+  #print(limitPrices1)
+  #print(limitOrders2)
+  #print(limitPrices2)
+  
+  
+  # if (!identical(blankList,MMLO1)){
+  #   print(limitOrders1)
+  # }
+  # if (!identical(blankList,MMLP1)){
+  #   print(limitOrders2)
+  # }
+  # 
+  # if (!identical(blankList,MMLO2)){
+  #   print(limitOrders2)
+  # }
+  # if (!identical(blankList,MMLP2)){
+  #   print(limitOrders2)
+  # }
+  # 
+  # 
+  # if (!identical(blankList,limitPrices1)){
+  #   print(limitOrders1)
+  # }
+  # if (!identical(blankList,limitPrices2)){
+  #   print(limitOrders2)
+  # }
+  # 
+  # if (!identical(blankList,limitOrders1)){
+  #   print(limitOrders2)
+  # }
+  # if (!identical(blankList,limitOrders2)){
+  #   print(limitOrders2)
+  # }
+  
+  #print(limitPrices1)
   return(list(store=store,marketOrders=marketOrders,
               limitOrders1=limitOrders1,limitPrices1=limitPrices1,
               limitOrders2=limitOrders2,limitPrices2=limitPrices2))
@@ -85,7 +127,7 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   cl <- newRowList[[params$series[i]]]$Close
   HLCdf <- data.frame(High = store$hi[startIndex:store$iter,i],
                       Low = store$low[startIndex:store$iter,i],
-                      Close = store$cl[startIndex:store$iter])
+                      Close = store$cl[startIndex:store$iter,i])
   HLdf <- data.frame(High = store$hi[startIndex:store$iter,i],
                      Low = store$low[startIndex:store$iter,i])
   
@@ -518,16 +560,69 @@ MomentumStrategyType2 <- function(store, newRowList, currentPos, info, params, i
   } else if (crossedBelowToday)  {
     store$shortEntryStop[i] <- lo
   }
+  #print(store$shortEntryStop[i])
+  
+  
+  rsiCalc <-	function(clStore,column,iter) {
+    startIndex <- iter - params$lookback - 1 # needs 2 extra periods
+    rsi <- last(RSI(clStore[startIndex:iter,column],n=params$rsi))
+    return(rsi)
+  }
+  
+  rsi <- rsiCalc(store$cl,i,store$iter)
   
   
   if((crossedAbove) && (cl > store$longEntryStop[i])) {
-    position <- posSize - currentPos[[i]]  #Go long (trend following)
-    store$stopLoss[i] <- cl*0.99
-    #crossAbove <<- crossAbove + 1
+    #if ((rsi > 50) && (rsi < 70)){
+      
+      #Plot Generation Code
+               # date <- index(cl)  #Trades Date
+               # dateLimits <- paste(as.Date(date) - 7,"/", as.Date(date)+ 21)  #Set Date Limits, Pre-Week/Post-3Week
+               # dateLimits <- gsub(" ", "", dateLimits, fixed = TRUE)  #Formatting
+               # 
+               # #PARAMS (for title)
+               # adxParam = 25
+               # emvParam = 0.3
+               # PlotTitle <- paste("Series",i,"-long-",index(cl),sep = "")
+               # 
+               # #Generate and Plot Graph
+               # #pdf(file = (paste("Plots/Momentum/",i,"/",PlotTitle,".pdf",sep ="")),   # The directory you want to save the file in
+               # #    width = 10, # The width of the plot in inches
+               # #    height = 10) # The height of the plot in inches
+               # d1 <- dataList[[i]]
+               # graphTitle <- paste("Long Opportunity Traded - Series", i,"-DATE:",index(cl))
+               # print(c("plotted",graphTitle))
+               # 
+               # #Plotting Function
+               # chartSeries(d1$Close,theme='white',TA=c(addEMA(n=3, col = 'red'),addEMA(n=30, col = 'black'),addRSI()),subset = dateLimits, name = graphTitle, plot = TRUE)
+               # #addTA(SMA(d1$Close,n=50),on=NA)
+               # abline(v = 8,col = 'blue')   #X-Axis line, date of enter
+               # 
+               # 
+               # 
+               # #HLCdf2 <- data.frame(d1$High, d1$Low,d1$Close)
+               # #addTA(ADX(HLCdf2,n=14),on=1)
+               # 
+               # #dev.off()
+      
+      
+      #position <- posSize - currentPos[[i]]  #Go long (trend following)
+      store$RiskStop[i] <- cl*0.99
+      store$EntryRSI[i] <- rsi
+      #crossAbove <<- crossAbove + 1
+    #}
   } else if((crossedBelow) && (cl < store$shortEntryStop[i])) {
-    position <- -posSize - currentPos[[i]]  #Go short (trend following)
-    store$stopLoss[i] <- cl*1.01
-    #crossAbove <<- crossAbove + 1
+  #} else if((crossedBelow)) {
+    #print("------------------------")
+    #print(store$shortEntryStop[i])
+    #print(cl)
+    #if ((rsi < 50) && (rsi > 30)){
+      #print("Entered a short")
+      position <- -posSize - currentPos[[i]]  #Go short (trend following)
+      store$RiskStop[i] <- cl*1.05
+      store$EntryRSI[i] <- rsi
+      #crossAbove <<- crossAbove + 1
+    #}
   }
   
   # if((crossedAbove) && (cl > localHigh)){
@@ -543,19 +638,25 @@ MomentumStrategyType2 <- function(store, newRowList, currentPos, info, params, i
   
   #EXIT LOGIC
   if (currentPos[i] >= 1 || position >= 1) {  #Check if i have taken a long position
-    if ((ma.3[crossingLookback] < ma.Long[crossingLookback]) || (cl < store$stopLoss[i])){
+    if ((ma.3[crossingLookback] < ma.Long[crossingLookback]) || (cl < store$stopLoss[i]) || (cl < store$RiskStop[i])){
+      #EXIT AS RSI NEARS OVERBOUGHT || (rsi > store$EntryRSI[i] * 1.1)
       position <- -currentPos[i] # Don't stay Long
-      crossAbove <<- crossAbove + 1
+      #crossAbove <<- crossAbove + 1
     }
-    store$stopLoss[i] <- cl*0.99
+    if (store$stopLoss[i] < cl*0.99) {
+      store$stopLoss[i] <- cl*0.99 
+    }
   }
-
+  ##Exit straight away after opeening a position need to saort this out, not sure whyn its happeneing!!!!
   else if (currentPos[i] <= -1 || position <= -1) { #Check if i have taken a short position
-    if ((ma.3[crossingLookback] < ma.Long[crossingLookback]) || (cl < store$stopLoss[i])){
+    if ((ma.3[crossingLookback] > ma.Long[crossingLookback]) ){#|| (cl > store$stopLoss[i]) ){#|| (cl > store$RiskStop[i])){
+      #print("position Exit")
       position <- -currentPos[i] # Don't stay short
-      crossAbove <<- crossAbove + 1
+      #crossAbove <<- crossAbove + 1
     }
-    store$stopLoss[i] <- cl*1.01
+    #if (store$stopLoss[i] > cl*1.05) {
+    #  store$stopLoss[i] <- cl*1.05
+    #}
   }
   
   return(list(position=position, store=store))
@@ -722,7 +823,10 @@ MeanRevStrategy <- function(store, newRowList, currentPos, info, params, i, star
   
   #############################################################################################       SHORT
   
+  adx <- last(ADX(HLCdf,n=params$adx))
+
   if (cl > bbands[,"up"]){
+    #if (adx[,4] < 25) {
     if (crossed > params$mrShortCrosses[3]){  #was 3
       if(priceGrowing && rsiLowering){  #RSI DIVERGENCE
         position <- -posSize - currentPos[[i]]  #Go short (trend following)
@@ -783,6 +887,7 @@ MeanRevStrategy <- function(store, newRowList, currentPos, info, params, i, star
 
   #############################################################################################       LONG
   if (cl < bbands[,"dn"]){
+    #if (adx[,4] < 25) {
     if (crossed > params$mrCrosses[3]){  #was 3
       if(priceLowering && rsiGrowing){
         position <- posSize - currentPos[[i]]  #Go long (trend following)
@@ -1517,6 +1622,7 @@ MeanRevStrategy <- function(store, newRowList, currentPos, info, params, i, star
 
 
 MeanRevStrategy2 <- function(store, newRowList, currentPos, info, params, i, startIndex){ #params inside of the function.
+  
   position <- 0
   cl = store$cl[startIndex:store$iter]
   bbands <- last(BBands(store$cl[startIndex:store$iter,i],
@@ -1599,130 +1705,366 @@ MarketMakingStrategy <- function(store, newRowList, currentPos, info, params, i,
   position <- 0
   #cat("currentPos", formatC(currentPos,3),"\n")
   
+  askLimitOrderList <- c(0,0,0,0,0,0,0,0,0,0)
+  bidLimitOrderList <- c(0,0,0,0,0,0,0,0,0,0)
+  askLimitPriceList <- c(0,0,0,0,0,0,0,0,0,0)
+  bidLimitPriceList <- c(0,0,0,0,0,0,0,0,0,0)
+  
   # check if current inventory is above a limit and if so exit completely
   # with a market order
-  marketOrders <- ifelse(abs(currentPos) > params$inventoryLimits, -currentPos, 0)      #Security Measure
+  marketOrders <- ifelse(abs(currentPos) > params$inventoryLimits, -currentPos, 0)      #Security Measur
   
-  # macd <- last(MACD(store$cl[startIndex:store$iter,i],nFast = params$nfast, nSlow = params$nSlow, nSig = params$nSig, percent = FALSE),2)
-  # if ((macd[1,1] < macd[1,2]) && (macd[2,1] > macd[2,2])){ ##CROSS ABOVE SIGNAL LINE (BULLISH)
-  #   #we expect to see a price rise (opposite for bullish and price fall)
-  # }
-  # obv <- last(OBV(store$cl[startIndex:store$iter,i],store$vol[startIndex:store$iter,i]))
-  # cl <- newRowList[[params$series[i]]]$Close
-  # ema <- last(EMA(store$cl[startIndex:store$iter,i],n=params$lookback, wilder = FALSE, ratio = NULL))
-  
-  
-  
-  
-  #print(spread)
-  
-  #print(last20ClosePrice)
-  
-  diffs <- diff(last20ClosePrice)
-  PerChange <- (diffs/last20ClosePrice[1:length(last20ClosePrice)-1])*100
-  
-  
-  
-  #TestValue <- as.double(close[c-1]) * (1 + (slipavgPerChange/2))
-  
-  
-  
-  
-  #print(mean(PerChange))
-  #sapply(1:length(newRowList),function(i)
-    #   newRowList[[i]]$Close)
-  
-  #print(last10ClosePrice)
-  
-  
-  # limitOrders1  <- rep(1,length(newRowList)) # BUY LIMIT ORDERS
-  # limitPrices1  <- sapply(1:length(newRowList),function(i)
-  #   newRowList[[i]]$Close - spread[i]/2)
-  # 
-  # limitOrders2  <- rep(-1,length(newRowList)) # SELL LIMIT ORDERS
-  # limitPrices2  <- sapply(1:length(newRowList),function(i)
-  #   newRowList[[i]]$Close + spread[i]/2)
-  
-  last20ClosePrice <- last(store$cl[startIndex:store$iter,i],5)  #LAST 20 DAYS (CLOSE PRICES)    -far right is the most recent
-  last20OpenPrice <- last(store$op[startIndex:store$iter,i],5)
-  last20ClosePrice <- head(last20ClosePrice, -1)
-  last20OpenPrice <- tail(last20OpenPrice,length(last20OpenPrice)-1)
-  
-  
-  
-  overnightSlippage <- ((last20OpenPrice-last20ClosePrice) / last20ClosePrice ) * 100
-  
-  avgSlippage <- mean(overnightSlippage)
-  
-  
-  cl <- newRowList[[params$series[i]]]$Close
-  op <- newRowList[[params$series[i]]]$Open
-  
-  #print("-------------------------")
-  #print(last20ClosePrice)
-  #print(last20OpenPrice)
-  #print(slippage)
-  #print(avgSlippage)
-  
-  
-  
-  # use the range (High-Low) as a indicator for a reasonable "spread" for
-  # this pseudo market making strategy
-  spread <- sapply(1:length(newRowList),function(i)
-    params$spreadPercentage * (newRowList[[i]]$High -
-                                 newRowList[[i]]$Low))
-  
-  #spread <- sapply(1:length(newRowList),function(i)
-  #spread <- spread * (1 + overnightSlippage)
-  
-  avgSlippage <- (1 + avgSlippage)
-  
-  #print(avgSlippage)
-  spread <- spread / 2
-  spread <- spread * avgSlippage
-  #print((spread))
+  #print(i)
+  if ((i>2) && (i<8)){
+    #print(i)
+    
+    #VOLATILITY INDICATORS
+    #HLC Data Frame
+    HLCdf <- data.frame(High = store$hi[startIndex:store$iter,i],
+                        Low = store$low[startIndex:store$iter,i],
+                        Close = store$cl[startIndex:store$iter,i])
+    HL <- data.frame(High = store$hi[startIndex:store$iter,i],
+                        Low = store$low[startIndex:store$iter,i])
+    last5ClosePrice <- last(store$cl[startIndex:store$iter,i],5)  #LAST 5 DAYS (CLOSE PRICES)
+    close <- store$cl[startIndex:store$iter,i]  #LAST 5 DAYS (CLOSE PRICES)
+    
+    #ATR SET UP
+    atr <- ATR(HLCdf)
+    atr <- last(atr)  ##maybe
+    ttr <- atr[,"tr"]
 
-  # limitOrders1  <- rep(1,length(newRowList)) # BUY LIMIT ORDERS
-  # limitPrices1  <- sapply(1:length(newRowList),function(i)
-  #   newRowList[[i]]$Close * 1.001)
-  #   #newRowList[[i]]$Close + spread[i]*(1+avgSlippage)/2)
-  #   #newRowList[[i]]$Close * (1 + (avgSlippage/2)))
-  # 
-  # limitOrders2  <- rep(-1,length(newRowList)) # SELL LIMIT ORDERS
-  # limitPrices2  <- sapply(1:length(newRowList),function(i)
-  #   newRowList[[i]]$Close * 0.999)
-  
-  limitOrders1  <- rep(1,length(newRowList)) # BUY LIMIT ORDERS
-  limitPrices1  <- sapply(1:length(newRowList),function(i)
-    (newRowList[[i]]$Close - spread[i]))
+    #AVERAGE TRUE RANGE
+    atr <- atr[,"atr"]
+    normalisedATR <- (as.double(atr) / last5ClosePrice[5]) * 100
+    #print("-----------------")
+    
+    #print(atr)
+    #print(normalisedATR)
+    
+    #print(last5ClosePrice[5])
 
-  limitOrders2  <- rep(-1,length(newRowList)) # SELL LIMIT ORDERS
-  limitPrices2  <- sapply(1:length(newRowList),function(i)
-    (newRowList[[i]]$Close + spread[i]))
-  
-  
-  #posSizes=c(24,20,142,6,13,96,89,1,42,306)
-  
-  # limitOrders1  <- rep(1,length(newRowList)) # BUY LIMIT ORDERS
-  # #limitOrders1  <- c(1,1,0,0,1,0,0,0,0,0) # BUY LIMIT ORDERS
-  # limitPrices1  <- sapply(1:length(newRowList),function(i)
-  #   newRowList[[i]]$Low * 1.00222)
-  # 
-  # limitOrders2  <- rep(-1,length(newRowList)) # SELL LIMIT ORDERS
-  # #limitOrders2  <- c(-1,-1,0,0,-1,0,0,0,0,0) # SELL LIMIT ORDERS
-  # limitPrices2  <- sapply(1:length(newRowList),function(i)
-  #   newRowList[[i]]$High * 0.99788)
-  
-  #print(limitPrices1[i])
-  #print(limitPrices2[i])
-  for (i in 1:10){
-    if (limitPrices1[i] > limitPrices2[i]){  #if my low price is larger than my high price... as the spread is very small... do not trade
-        limitOrders1[i] <- 0
-        limitOrders2[i] <- 0
+    #VOLATILITY RATIO (SCHWAGER)
+    vr <- ttr/atr
+    #print(vr)
+    #VR2 WAS NOT USED----
+
+    #CHAIKIN VOLATILITY
+    chaikin <- chaikinVolatility(HL)
+    chaikin <- last(chaikin)
+    #chaikin <- chaikin[[1]
+    #print(chaikin)
+
+    #BBandWidth
+    
+    bbands <- last(BBands(store$cl[startIndex:store$iter,i],n=14,sd=1))
+    
+    #bbands <- (BBands(cl,n=14,sd=1))
+    BW <- ((bbands[,"up"] - bbands[,"dn"])/bbands[,"mavg"])*100
+    #print(BW)
+    
+
+    #close[5] is today
+    #close[1] is 5 days ago
+    PerChange5 <- ((as.double(last5ClosePrice[5]) - as.double(last5ClosePrice[1])) / as.double(last5ClosePrice[1])) * 100 
+    
+    
+    
+    #SERIES 3
+    # LoAtrVal <- 0
+    # UpAtrVal <- 1.5
+    # LoBBandVal <- 0
+    # UpBBandVal <- 2.4
+    # LoChaikinVal <- -0.4
+    # UpChaikinVal <- 0.5
+    # Lo5DayVal <- SKIPVALUE
+    # Up5DayVal <- SKIPVALUE
+    # Lo10DayVal <- SKIPVALUE
+    # Up10DayVal <- SKIPVALUE
+    # LoSchwagerVal <- 0.5
+    # UpSchwagerVal <- 1.7
+    # LoVR2Val <- 0.6
+    # UpVR2Val <- 1.3
+    
+    todaysClosePrice <- last(close)
+    
+    if (i == 3){
+      #print(normalisedATR)
+      if ((normalisedATR > 0) && (normalisedATR <= 1.5))  {
+        #print(BW)
+        if ((as.double(BW > 0)) && (as.double(BW <= 2.4)))  {
+          #print(chaikin)
+          if ((chaikin > -0.4) && (chaikin <= 0.5))  {
+            #print(vr)
+            if ((vr > 0.5) && (vr <= 1.7))  {
+              #print("HERE")
+              Series3 <<- Series3 + 1
+              bidLimitOrderList[3] <- -1
+              bidLimitPriceList[3] <- todaysClosePrice - ((atr/2)*0.1)
+              
+                
+                #print(atr)
+              
+              
+              askLimitOrderList[3] <- 1
+              askLimitPriceList[3] <- todaysClosePrice + ((atr/2)*0.1)
+              #print(normalisedATR)
+            }
+          }
+        }
+      }
     }
+    #######set the correct values in these
+    if (i == 4){
+      #print(PerChange5)
+      if ((PerChange5 > -0.2) && (PerChange5 <= 0.9))  {     #PERCENTAGECHANGE NEEDS TO BE CALUCATED
+        if ((BW > 0.6) && (BW <= 1.6))  {
+          if ((chaikin > -0.3) && (chaikin <= 0.3))  {
+            #print("HERE")
+            Series4 <<- Series4 + 1
+            bidLimitOrderList[4] <- -1
+            bidLimitPriceList[4] <- todaysClosePrice - ((atr/2)*0.1)
+            
+            askLimitOrderList[4] <- 1
+            askLimitPriceList[4] <- todaysClosePrice + ((atr/2)*0.1)
+            #print(Series4)
+          }
+        }
+      }
+    }
+
+    if (i == 5){
+      if ((normalisedATR > 0.2) && (normalisedATR <= 0.7))  {
+        if ((BW > 0.2) && (BW <= 1.1))  {
+          #print("HERE")
+          Series5 <<- Series5 + 1
+          bidLimitOrderList[5] <- -1
+          bidLimitPriceList[5] <- todaysClosePrice - ((atr/2)*0.1)
+          
+          askLimitOrderList[5] <- 1
+          askLimitPriceList[5] <- todaysClosePrice + ((atr/2)*0.1)
+        }
+      }
+    }
+
+    if (i == 6){
+      if ((normalisedATR > 0) && (normalisedATR <= 1.1))  {
+        if ((BW > 1.1) && (BW <= 2))  {
+          if ((chaikin > -0.2) && (chaikin <= 0.2))  {
+            if ((vr > 0.6) && (vr <= 1.1))  {
+              #print("HERE")
+              Series6 <<- Series6 + 1
+              bidLimitOrderList[6] <- -1
+              bidLimitPriceList[6] <- todaysClosePrice - ((atr/2)*0.1)
+              
+              askLimitOrderList[6] <- 1
+              askLimitPriceList[6] <- todaysClosePrice + ((atr/2)*0.1)
+            }
+          }
+        }
+      }
+    }
+
+    if (i == 7){
+      #print(normalisedATR)
+      if ((normalisedATR > 1) && (normalisedATR <= 1.8))  {
+        if ((chaikin > -0.1) && (chaikin <= 0.4))  {
+          #print("HERE")
+          Series7 <<- Series7 + 1
+          bidLimitOrderList[7] <- -1 #-1
+          bidLimitPriceList[7] <- todaysClosePrice - ((atr/2)*0.1)
+          
+          askLimitOrderList[7] <- 1 #1
+          askLimitPriceList[7] <- todaysClosePrice + ((atr/2)*0.1)
+        }
+      }
+    }
+
+
+    #askLimitPriceList[7] <- todaysClosePrice + ((atr/2)*0.1)
+
+
+# 
+# 
+# 
+#     #print(spread)
+# 
+#     #print(last20ClosePrice)
+# 
+#     #diffs <- diff(last20ClosePrice)
+#     #PerChange <- (diffs/last20ClosePrice[1:length(last20ClosePrice)-1])*100
+# 
+# 
+# 
+#     #TestValue <- as.double(close[c-1]) * (1 + (slipavgPerChange/2))
+# 
+# 
+# 
+# 
+#     #print(mean(PerChange))
+#     #sapply(1:length(newRowList),function(i)
+#       #   newRowList[[i]]$Close)
+# 
+#     #print(last10ClosePrice)
+# 
+# 
+#     # limitOrders1  <- rep(1,length(newRowList)) # BUY LIMIT ORDERS
+#     # limitPrices1  <- sapply(1:length(newRowList),function(i)
+#     #   newRowList[[i]]$Close - spread[i]/2)
+#     #
+#     # limitOrders2  <- rep(-1,length(newRowList)) # SELL LIMIT ORDERS
+#     # limitPrices2  <- sapply(1:length(newRowList),function(i)
+#     #   newRowList[[i]]$Close + spread[i]/2)
+# 
+#     last20ClosePrice <- last(store$cl[startIndex:store$iter,i],2)  #LAST 20 DAYS (CLOSE PRICES)    -far right is the most recent
+#     last20OpenPrice <- last(store$op[startIndex:store$iter,i],2)
+#     last20ClosePrice <- head(last20ClosePrice, -1)
+#     last20OpenPrice <- tail(last20OpenPrice,length(last20OpenPrice)-1)
+# 
+# 
+# 
+#     overnightSlippage <- ((last20OpenPrice-last20ClosePrice) / last20ClosePrice ) * 100
+# 
+#     avgSlippage <- mean(overnightSlippage)
+#     #print(overnightSlippage)
+#     #print(avgSlippage)
+# 
+# 
+#     cl <- newRowList[[params$series[i]]]$Close
+#     op <- newRowList[[params$series[i]]]$Open
+# 
+#     #print("-------------------------")
+#     #print(last20ClosePrice)
+#     #print(last20OpenPrice)
+#     #print(slippage)
+#     #print(avgSlippage)
+# 
+#     #l
+#     last10HighPrices <- last(store$hi[startIndex:store$iter,i],11)  #LAST 20 DAYS (CLOSE PRICES)    -far right is the most recent
+#     last10LowPrices <- last(store$low[startIndex:store$iter,i],11)  #LAST 20 DAYS (CLOSE PRICES)    -far right is the most recent
+#     tmp <- last10HighPrices - last10LowPrices
+#     #print("---------------------------------")
+#     #print(tmp)
+# 
+# 
+#     #ema.10 <- last((EMA(tmp,n=10)),1)
+#     #print(ema.10)
+# 
+#     # use the range (High-Low) as a indicator for a reasonable "spread" for
+#     # this pseudo market making strategy
+#     spread <- sapply(1:length(newRowList),function(i)
+#       params$spreadPercentage * (newRowList[[i]]$High -
+#                                    newRowList[[i]]$Low))
+# 
+#     #spread <- sapply(1:length(newRowList),function(i)
+#     #spread <- spread * (1 + overnightSlippage)
+# 
+#     avgSlippage <- (1 + avgSlippage)
+# 
+#     #print(avgSlippage)
+# 
+#     #spread <- spread / 2
+#     spread <- spread * avgSlippage
+# 
+#     #print((spread))
+# 
+#     # limitOrders1  <- rep(1,length(newRowList)) # BUY LIMIT ORDERS
+#     # limitPrices1  <- sapply(1:length(newRowList),function(i)
+#     #   newRowList[[i]]$Close * 1.001)
+#     #   #newRowList[[i]]$Close + spread[i]*(1+avgSlippage)/2)
+#     #   #newRowList[[i]]$Close * (1 + (avgSlippage/2)))
+#     #
+#     # limitOrders2  <- rep(-1,length(newRowList)) # SELL LIMIT ORDERS
+#     # limitPrices2  <- sapply(1:length(newRowList),function(i)
+#     #   newRowList[[i]]$Close * 0.999)
+# 
+# 
+# 
+#     ###c(24,20,142,0,13,96,0,0,0,306)
+# 
+#     last10HighPrices <- last(store$hi[startIndex:store$iter,i],10)  #LAST 20 DAYS (CLOSE PRICES)    -far right is the most recent
+#     last10LowPrices <- last(store$low[startIndex:store$iter,i],10)  #LAST 20 DAYS (CLOSE PRICES)    -far right is the most recent
+#     last10ClosePrices <- last(store$hi[startIndex:store$iter,i],10)  #LAST 20 DAYS (CLOSE PRICES)    -far right is the most recent
+#     last10OpenPrices <- last(store$low[startIndex:store$iter,i],10)  #LAST 20 DAYS (CLOSE PRICES)    -far right is the most recent
+# 
+#     # print("------------------------")
+#     # print(last10HighPrices)
+#     # print(last10OpenPrices)
+#     # print(last10ClosePrices)
+#     # print(last10LowPrices)
+# 
+# 
+# 
+# 
+# 
+# 
+# 
+#     # limitOrders1  <- c(1,1,1,0,1,1,0,0,0,1)
+#     # limitPrices1  <- sapply(1:length(newRowList),function(i)
+#     #   (mean(newRowList[[i]]$Close,newRowList[[i]]$Open,newRowList[[i]]$Close) - spread[i]))
+#     #
+#     # limitOrders2  <- c(-1,-1,-1,0,-1,-1,0,0,0,-1)
+#     # limitPrices2  <- sapply(1:length(newRowList),function(i)
+#     #   (mean(newRowList[[i]]$Close,newRowList[[i]]$Open,newRowList[[i]]$Close) + spread[i]))
+# 
+# 
+#     #posSizes=c(24,20,142,6,13,96,89,1,42,306)
+# 
+#     # limitOrders1  <- rep(1,length(newRowList)) # BUY LIMIT ORDERS
+#     # #limitOrders1  <- c(1,1,0,0,1,0,0,0,0,0) # BUY LIMIT ORDERS
+#     # limitPrices1  <- sapply(1:length(newRowList),function(i)
+#     #   newRowList[[i]]$Low * 1.00222)
+#     #
+#     # limitOrders2  <- rep(-1,length(newRowList)) # SELL LIMIT ORDERS
+#     # #limitOrders2  <- c(-1,-1,0,0,-1,0,0,0,0,0) # SELL LIMIT ORDERS
+#     # limitPrices2  <- sapply(1:length(newRowList),function(i)
+#     #   newRowList[[i]]$High * 0.99788)
+# 
+#     #print(limitPrices1[i])
+#     #print(limitPrices2[i])
+# 
+# 
+# 
+# 
+# 
+#   }
+#   
+#   # limitOrders1  <- c(1,1,1,0,1,1,0,0,0,1)
+#   # limitPrices1  <- sapply(1:length(newRowList),function(i)
+#   #   (mean(newRowList[[i]]$Close,newRowList[[i]]$Open,newRowList[[i]]$Close) - spread[i]))
+#   # 
+#   # limitOrders2  <- c(-1,-1,-1,0,-1,-1,0,0,0,-1)
+#   # limitPrices2  <- sapply(1:length(newRowList),function(i)
+#   #   (mean(newRowList[[i]]$Close,newRowList[[i]]$Open,newRowList[[i]]$Close) + spread[i]))
+#   
+#   #print(askLimitOrderList)
+#   #print(bidLimitOrderList)
+    
   }
   
+  limitOrders1  <- askLimitOrderList
+  limitPrices1  <- askLimitPriceList
+
+  limitOrders2  <- bidLimitOrderList
+  limitPrices2  <- bidLimitPriceList
   
+  # if ('3' %in% limitPrices1){
+  #   print("HERE")
+  # }
+  # if ('3' %in% limitPrices2){
+  #   print("HERE")
+  # }
+  
+  
+  
+  # for (i in 1:10){
+  #   if (limitPrices1[i] > limitPrices2[i]){  #if my low price is larger than my high price... as the spread is very small... do not trade
+  #       limitOrders1[i] <- 0
+  #       limitOrders2[i] <- 0
+  #   }
+  # }
+  
+  #print(limitPrices1)
+  #print(limitPrices2)
   
   # 29216 37066
   return(list(store=store,marketOrders=marketOrders,
@@ -1795,6 +2137,8 @@ MarketMakingStrategy <- function(store, newRowList, currentPos, info, params, i,
     rsiStore <- matrix(ncol= 10, nrow = 21)
     takeProfit <- vector(mode="double",length=length(series))
     stopLoss <- vector(mode="double",length=length(series))
+    RiskStop <- vector(mode="double",length=length(series))
+    EntryRSI <- vector(mode="double",length=length(series))
     stopLossEntryDate <- vector(mode="double",length=length(series))
     longEntryStop <- vector(mode="double",length=length(series))
     shortEntryStop <- vector(mode="double",length=length(series))
@@ -1805,7 +2149,7 @@ MarketMakingStrategy <- function(store, newRowList, currentPos, info, params, i,
                 ,op=initLowStore(newRowList,series),count = count,currentHigh = currentHigh
                 ,prevRSI.1 = prevRSI.1,prevRSI.2 = prevRSI.2,rsiStore = rsiStore,stopLoss = stopLoss
                 ,stopLossEntryDate = stopLossEntryDate,takeProfit = takeProfit, longEntryStop = longEntryStop,
-                shortEntryStop = shortEntryStop))
+                shortEntryStop = shortEntryStop, RiskStop = RiskStop, EntryRSI= EntryRSI))
   }
   updateStore <- function(store, newRowList, series) {
     store$iter <- store$iter + 1
