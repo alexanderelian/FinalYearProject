@@ -1,4 +1,4 @@
-#"strat"=list(lookback=50,lookbackShort=34,MOsdParam=c(1.5,1.5,2,1.5,99,1.5,1.5,1.5,1.5,1.5),MOShortSdParams=c(1.5,99,2,2,99.5,1.5,99,99,99,1.5),sdParamShort=1,adx=14,MOadxSignal=c(25,25,20,25,0,35,25,35,35,25),MOShortadxSignal=c(25,0,25,30,0,30,0,0,0,30),emvLong=0.3,emvShort=-0.3,nfast=12,nSlow=26,nSig = 9,rsi=14,holdPeriod=c(19,18,18,21,0,21,16,21,8,5),shortHoldPeriod=c(21,0,16,14,0,18,0,0,0,21),series=c(1,2,3,4,5,6,7,8,9,10),posSizes=c(24,20,142,6,13,96,89,1,42,306),spreadPercentage=0.001,inventoryLimits=rep(10,10))
+#"strat"=list(lookback=50,shortEma.F=c(4,4,3,11,11,11,11,11,11,3),shortEma.S=c(35,30,35,11,11,11,11,11,11,35),longEma.F=c(11,11,4,2,11,3,3,11,3,11),longEma.S=c(11,11,30,40,11,35,35,11,35,11),LongRiskStopPercentage=c(0,0.99,0.98,0.98,0,0.98,0.98,0.99,0.98,0.98),ShortRiskStopPercentage=c(1.02,1.02,1.01,0,0,0,0,0,0,1.01),maLong=c(1,25,1,30,1,30,45,30,1,1),mrLookback=44,mrADX=25,mrShortCrosses=c(1,2,3,4,5,6,7,8,9,10),mrCrosses=c(1,2,3,4,5,6,7,8,9,10),mrSD=rep(1,10),MOsdParam=c(1.5,1.5,2,1.5,99,1.5,99,99,1.5,99),MOShortSdParams=c(1.5,99,2,99,99,99,99,99,99,1.5),sdParamShort=1,adx=14,MOadxSignal=c(25,25,20,25,0,35,0,0,35,0),MOShortadxSignal=c(25,0,25,0,0,0,0,0,0,30),emvLong=0.3,emvShort=-0.3,nfast=12,nSlow=26,nSig = 9,rsi=14,holdPeriod=c(19,18,18,21,0,21,16,21,8,5),shortHoldPeriod=c(21,0,16,14,0,18,0,0,0,21),series=c(1,2,3,4,5,6,7,8,9,10),posSizes=c(24,20,142,6,13,96,89,1,42,306),MRposSizes=c(24,20,142,6,13,96,89,1,42,306),spreadPercentage=0.002,inventoryLimits=rep(0,10))
 maxRows <- 3100 # used to initialize a matrix to store closing prices
 # set maxRows as the number of rows in data (it can be larger but should not be smaller)
 
@@ -190,17 +190,16 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   position <- 0
 
   moneyForThisStrat <- moneyLeft/2
-  positionSizes <- moneyForThisStrat/9
+  positionSizes <- moneyForThisStrat/8
   #print(moneyForStrat)
   
   
-  # if (store$iter %% 50 == 0 ){
-  #   #print("--------------")
+  # if (store$iter %% 100 == 0 ){
+  #   print("Strat One")
   #   print(positionSizes)
   #   #print(store$breakout)
   #   #print(store$stMomentum)
   # }
-  
   
   
   #Set Up
@@ -219,11 +218,12 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   emv <- last(EMV(HLdf,store$vol[startIndex:store$iter,i]))
   # bbands <- last(BBands(store$cl[startIndex:store$iter,i],
   #                       n=params$lookback,sd=params$sdParam[i]))
+ # print("made it here")
   Longbbands <- last(BBands(store$cl[startIndex:store$iter,i],
                         n=params$lookback,sd=params$MOsdParam[i]))       #For main_optimisation only [i] and in adx for long and short trades
   Shortbbands <- last(BBands(store$cl[startIndex:store$iter,i],
                             n=params$lookback,sd=params$MOShortSdParams[i]))       #For main_optimisation only [i] and in adx for long and short trades
-  
+  #print("made it here")
   # Error in if (cl < bbands[, "dn"]) { : 
   # missing value where TRUE/FALSE needed
   # Called from: MomentumStrategy(store, newRowList, currentPos, info, params, 
@@ -243,10 +243,9 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   #print(bbands)
   #print(store$iter)
   
-  #if(store$iter >= 968) {}else{     #if you there are less than 31 days of data left, dont enter any trades...
+  #if(store$iter >= 975) {}else{     #if you there are less than 31 days of data left, dont enter any trades...
   
   #print(c("param recieced is",params))
-    
   #Could also use adx (+/-DMI to confirm up/downtrends)
   if (cl < Shortbbands[,"dn"]) {
      if (histogramValue.new < histogramValue.old && histogramValue.new < 0){ #Downward Momentum & Increasing
@@ -353,6 +352,7 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
        if (adx[,4] > params$MOadxSignal[i]) {  #VALUES (0-25:Weak : 25-50:Strong : 50-75:V.Strong : 75-100:Ext.Strong)  #needs to be [i] for full run: as there is multiple series to runthrough same for bbands sd
          if (emv[,1] > params$emvLong) {  #VALUES (Break Above 0 is price rise with ease (below is price fall): Further from 0 equals stronger)             ##Avoid Fakeout, Is able to move more and in a positive
            #position <- params$posSizes[params$series[i]] - currentPos[[i]]  #Go long (trend following)
+           
            position <- posSize - currentPos[[i]]  #Go long (trend following)
            
            store$BreakoutRiskStop[i] <- cl*0.90
@@ -564,7 +564,6 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   else {
     store$count[i] <- 0 # reset count to 0
   }
-  
   return(list(position=position, store=store))
 }
 
@@ -575,7 +574,14 @@ MomentumStrategyType2 <- function(store, newRowList, currentPos, info, params, i
   bidLimitPriceList <- c(0,0,0,0,0,0,0,0,0,0)
   
   moneyForThisStrat <- moneyLeft/2
-  positionSizes <- moneyForThisStrat/9
+  positionSizes <- moneyForThisStrat/3.5
+  
+  # if (store$iter %% 100 == 0 ){
+  #   print("Strat two")
+  #   print(positionSizes)
+  #   #print(store$breakout)
+  #   #print(store$stMomentum)
+  # }
   
   #Set Up
   cl <- newRowList[[params$series[i]]]$Close
