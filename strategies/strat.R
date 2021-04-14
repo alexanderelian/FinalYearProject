@@ -19,6 +19,20 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
   #MMLO2 <- allzero
   #MMLP2 <- allzero
   
+  totalshortvalue <- 0
+  for (tmpcounter1 in 1:10){
+    cl <- newRowList[[params$series[tmpcounter1]]]$Close
+    if ((currentPos[tmpcounter1] < 0))  {
+      totalshortvalue = totalshortvalue + (currentPos[tmpcounter1] * as.double(cl))
+    }
+  }
+  
+  #print(paste("current Short value is", totalshortvalue))
+  
+  #print(info$balance)
+  moneyLeft <<- as.double(info$balance) - abs(totalshortvalue)
+  #print(paste("money to allocate is", moneyLeft))
+  
   if (store$iter > params$lookback) {
     startIndex <-  store$iter - params$lookback
     #for (i in 1:1) {  #One Series
@@ -75,11 +89,33 @@ getOrders <- function(store, newRowList, currentPos, info, params) {
     }
   }
   
-  if (store$iter %% 50 == 0 ){
-    print("--------------")
-    print(currentPos)
-    print(store$breakout)
-    print(store$stMomentum)
+  
+  #print(info$balance)
+  #print(info$netWorth)
+  currentPosNo <- 0
+  for (tmpcounter in 1:10){
+    if ((currentPos[tmpcounter] > 0.9) || (currentPos[tmpcounter] < -0.9))
+      currentPosNo <- currentPosNo + 1
+  }
+  
+  if(currentPosNo > MaxPosNo) {
+    MaxPosNo <<- currentPosNo
+  }
+  if(currentPosNo == 9) {
+    countMaxPosNo <<- countMaxPosNo + 1
+    print(store$iter)
+  }
+  
+  
+  #cl <- newRowList[[params$series[1]]]$Close
+  #print(as.double(cl))
+  #print(currentPos)
+  
+  if (store$iter %% 200 == 0 ){
+    #print("--------------")
+    #print(currentPos)
+    #print(store$breakout)
+    #print(store$stMomentum)
   }
   
   store$breakout <- store$breakout + breakoutPosition
@@ -153,6 +189,20 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
   #Using Market Orders
   position <- 0
 
+  moneyForThisStrat <- moneyLeft/2
+  positionSizes <- moneyForThisStrat/9
+  #print(moneyForStrat)
+  
+  
+  # if (store$iter %% 50 == 0 ){
+  #   #print("--------------")
+  #   print(positionSizes)
+  #   #print(store$breakout)
+  #   #print(store$stMomentum)
+  # }
+  
+  
+  
   #Set Up
   cl <- newRowList[[params$series[i]]]$Close
   HLCdf <- data.frame(High = store$hi[startIndex:store$iter,i],
@@ -162,7 +212,7 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
                      Low = store$low[startIndex:store$iter,i])
   
   
-  posSize <- 10000 / cl
+  posSize <- round(positionSizes / cl, digits=2)
   
   #Calculate Indicators
   adx <- last(ADX(HLCdf,n=params$adx))
@@ -208,7 +258,7 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
            
            
            
-           #store$BreakoutRiskStop[i] <- cl*1.05
+           store$BreakoutRiskStop[i] <- cl*1.07
            
            
            
@@ -305,7 +355,8 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
            #position <- params$posSizes[params$series[i]] - currentPos[[i]]  #Go long (trend following)
            position <- posSize - currentPos[[i]]  #Go long (trend following)
            
-           #store$BreakoutRiskStop[i] <- cl*0.92
+           store$BreakoutRiskStop[i] <- cl*0.90
+          
            
            
            
@@ -487,7 +538,7 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
     #print("You should not see this, if you have a long trade has occured")
     if (store$count[i] < 0) { #If last time i was short...
       store$count[i] = 1 # Begin the count
-    } else if ((store$count[i] == params$holdPeriod[i])){#} || (store$BreakoutRiskStop[i] > cl)) { # If holding period is reached
+    } else if ((store$count[i] == params$holdPeriod[i]) || (store$BreakoutRiskStop[i] > cl)) { # If holding period is reached
       position <- -currentPos[i] # Don't stay long
       store$count[i] <- 0 # Reset count to 0
       #print("FORCED ENDED LONG TRADE")
@@ -501,7 +552,7 @@ MomentumStrategy <- function(store, newRowList, currentPos, info, params, i, sta
     #print("Entered Short Trade")
     if (store$count[i] > 0) {   #If last time i was long...
       store$count[i] = -1 #Begin the count
-    } else if ((store$count[i] == -params$shortHoldPeriod[i])){# || (store$BreakoutRiskStop[i] < cl)) { # If holding period is reached
+    } else if ((store$count[i] == -params$shortHoldPeriod[i]) || (store$BreakoutRiskStop[i] < cl)) { # If holding period is reached
       #print(c("Left Short Trade after day ", store$count[i]))
       position <- -currentPos[i] # Don't stay short
       store$count[i] <- 0 # Reset count to 0
@@ -523,6 +574,9 @@ MomentumStrategyType2 <- function(store, newRowList, currentPos, info, params, i
   bidLimitOrderList <- c(0,0,0,0,0,0,0,0,0,0)
   bidLimitPriceList <- c(0,0,0,0,0,0,0,0,0,0)
   
+  moneyForThisStrat <- moneyLeft/2
+  positionSizes <- moneyForThisStrat/9
+  
   #Set Up
   cl <- newRowList[[params$series[i]]]$Close
   hi <- newRowList[[params$series[i]]]$High
@@ -531,7 +585,7 @@ MomentumStrategyType2 <- function(store, newRowList, currentPos, info, params, i
                       Low = store$low[startIndex:store$iter,i],
                       Close = store$cl[startIndex:store$iter])
   
-  posSize <- 10000 / cl
+  posSize <- round(positionSizes / cl, digits=2)
   
   #Check for a cross...
   crossingLookback <- 5
@@ -629,8 +683,8 @@ MomentumStrategyType2 <- function(store, newRowList, currentPos, info, params, i
       position <- -currentPos[i] # Don't stay Long
       #crossAbove <<- crossAbove + 1
     }
-    if (store$stopLoss[i] < cl*0.94) {
-      store$stopLoss[i] <- cl*0.94
+    if (store$stopLoss[i] < cl*0.89) {
+      store$stopLoss[i] <- cl*0.89
     }
   }
 
@@ -640,8 +694,8 @@ MomentumStrategyType2 <- function(store, newRowList, currentPos, info, params, i
       position <- -currentPos[i] # Don't stay short
       #crossAbove <<- crossAbove + 1
     }
-    if (store$stopLoss[i] > cl*1.08) {
-     store$stopLoss[i] <- cl*1.08
+    if (store$stopLoss[i] > cl*1.06) {
+     store$stopLoss[i] <- cl*1.06
     }
   }
   
